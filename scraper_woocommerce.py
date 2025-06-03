@@ -295,8 +295,9 @@ def export_fiches_concurrents_json(taille_batch=5):
 # === INTERFACE INTERACTIVE ===
 if __name__ == "__main__":
     import sys
+    import threading
     import tkinter as tk
-    from tkinter import scrolledtext
+    from tkinter import scrolledtext, ttk
 
     id_url_map = charger_liens_avec_id()
 
@@ -319,32 +320,66 @@ if __name__ == "__main__":
             print("⛔ Aucun ID valide fourni.\n")
         return ids
 
+    def run_in_thread(func, start_msg="En cours...", end_msg="Terminé"):
+        def task():
+            status_var.set(start_msg)
+            func()
+            status_var.set(end_msg)
+        threading.Thread(target=task, daemon=True).start()
+
     def run_scrap_variantes():
         ids = get_ids_from_entry()
         if ids:
-            scrap_produits_par_ids(id_url_map, ids)
+            run_in_thread(lambda: scrap_produits_par_ids(id_url_map, ids),
+                          "Scraping variantes...", "Scraping terminé")
 
     def run_scrap_concurrents():
         ids = get_ids_from_entry()
         if ids:
-            scrap_fiches_concurrents(id_url_map, ids)
+            run_in_thread(lambda: scrap_fiches_concurrents(id_url_map, ids),
+                          "Scraping concurrents...", "Scraping terminé")
 
     def run_export_json():
-        export_fiches_concurrents_json()
+        run_in_thread(export_fiches_concurrents_json,
+                      "Export JSON...", "Export terminé")
 
+    def open_results_folder():
+        import subprocess
+        import platform
+        path = save_directory
+        if platform.system() == "Windows":
+            os.startfile(path)
+        elif platform.system() == "Darwin":
+            subprocess.call(["open", path])
+        else:
+            subprocess.call(["xdg-open", path])
     root = tk.Tk()
     root.title("WooCommerce Scraper")
 
-    tk.Label(root, text="Plage d'IDs (A1-A5)").pack(pady=4)
-    entry_ids = tk.Entry(root, width=20)
-    entry_ids.pack()
+    main_frame = ttk.Frame(root, padding=10)
+    main_frame.grid(row=0, column=0, sticky="nsew")
+    root.columnconfigure(0, weight=1)
+    root.rowconfigure(0, weight=1)
 
-    tk.Button(root, text="Scraper variantes", command=run_scrap_variantes).pack(fill="x", pady=2)
-    tk.Button(root, text="Scraper concurrents", command=run_scrap_concurrents).pack(fill="x", pady=2)
-    tk.Button(root, text="Exporter JSON", command=run_export_json).pack(fill="x", pady=2)
+    ttk.Label(main_frame, text="Plage d'IDs (A1-A5)").grid(row=0, column=0, sticky="w")
+    entry_ids = ttk.Entry(main_frame, width=20)
+    entry_ids.grid(row=1, column=0, pady=5, sticky="ew")
 
-    log_text = scrolledtext.ScrolledText(root, width=80, height=20, state="disabled")
-    log_text.pack(pady=4)
+    btn_frame = ttk.Frame(main_frame)
+    btn_frame.grid(row=2, column=0, pady=5, sticky="ew")
+    btn_frame.columnconfigure((0, 1, 2, 3), weight=1)
+
+    ttk.Button(btn_frame, text="Scraper variantes", command=run_scrap_variantes).grid(row=0, column=0, padx=2, sticky="ew")
+    ttk.Button(btn_frame, text="Scraper concurrents", command=run_scrap_concurrents).grid(row=0, column=1, padx=2, sticky="ew")
+    ttk.Button(btn_frame, text="Exporter JSON", command=run_export_json).grid(row=0, column=2, padx=2, sticky="ew")
+    ttk.Button(btn_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=3, padx=2, sticky="ew")
+
+    log_text = scrolledtext.ScrolledText(main_frame, width=80, height=20, state="disabled")
+    log_text.grid(row=3, column=0, pady=10, sticky="nsew")
+    main_frame.rowconfigure(3, weight=1)
+
+    status_var = tk.StringVar(value="")
+    ttk.Label(main_frame, textvariable=status_var).grid(row=4, column=0, sticky="w")
 
     sys.stdout = TextRedirector(log_text)
     sys.stderr = TextRedirector(log_text)
