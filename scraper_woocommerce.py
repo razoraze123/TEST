@@ -76,12 +76,15 @@ def scrap_produits_par_ids(id_url_map, ids_selectionnes):
     })
 
     woocommerce_rows = []
+    n_ok = 0
+    n_err = 0
 
     print(f"\n🚀 Début du scraping de {len(ids_selectionnes)} liens...\n")
     for idx, id_produit in enumerate(ids_selectionnes, start=1):
         url = id_url_map.get(id_produit)
         if not url:
             print(f"❌ ID introuvable dans le fichier : {id_produit}")
+            n_err += 1
             continue
 
         print(f"🔎 [{idx}/{len(ids_selectionnes)}] {id_produit} → {url}")
@@ -160,12 +163,16 @@ def scrap_produits_par_ids(id_url_map, ids_selectionnes):
 
         except Exception as e:
             print(f"❌ Erreur sur {url} → {e}\n")
+            n_err += 1
             continue
+        else:
+            n_ok += 1
 
     driver.quit()
     df = pd.DataFrame(woocommerce_rows)
     df.to_excel(fichier_excel, index=False)
     print(f"\n📁 Données sauvegardées dans : {fichier_excel}")
+    return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
 def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
@@ -183,12 +190,15 @@ def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
 
     os.makedirs(save_directory, exist_ok=True)
     recap_data = []
+    n_ok = 0
+    n_err = 0
     total = len(ids_selectionnes)
     for idx, id_produit in enumerate(ids_selectionnes, start=1):
         url = id_url_map.get(id_produit)
         if not url:
             print(f"\n❌ ID introuvable dans le fichier : {id_produit}")
             recap_data.append(("?", "?", id_produit, "ID non trouvé"))
+            n_err += 1
             continue
 
         print(f"\n📦 {idx} / {total}")
@@ -239,9 +249,11 @@ def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
 
             print(f"✅ Extraction OK ({filename})")
             recap_data.append((filename, title, url, "Extraction OK"))
+            n_ok += 1
         except Exception as e:
             print(f"❌ Extraction Échec — {str(e)}")
             recap_data.append(("?", "?", url, "Extraction Échec"))
+            n_err += 1
 
     df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
     df.to_excel(recap_excel_path, index=False)
@@ -249,6 +261,7 @@ def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
     print("\n🎉 Extraction terminée. Résultats enregistrés dans :")
     print(f"- 📁 Fiches : {save_directory}")
     print(f"- 📊 Récapitulatif : {recap_excel_path}")
+    return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
 def export_fiches_concurrents_json(taille_batch=5):
@@ -302,7 +315,7 @@ if __name__ == "__main__":
     import sys
     import threading
     import tkinter as tk
-    from tkinter import scrolledtext, ttk, filedialog
+    from tkinter import scrolledtext, ttk, filedialog, messagebox
 
     id_url_map = charger_liens_avec_id()
     id_list = charger_liste_ids()
@@ -365,9 +378,25 @@ if __name__ == "__main__":
 
         def run_all():
             status_var.set("Exécution en cours...")
+            n_ok_total = 0
+            n_err_total = 0
             for act in actions:
-                act()
+                res = act()
+                if isinstance(res, tuple) and len(res) == 2:
+                    ok, err = res
+                    n_ok_total += ok
+                    n_err_total += err
             status_var.set("Exécution terminée")
+            summary = (
+                f"✅ {n_ok_total} produits scrappés, "
+                f"❌ {n_err_total} erreurs, "
+                f"📁 Données dans: {results_dir}"
+            )
+            print(summary)
+            try:
+                messagebox.showinfo("Récapitulatif", summary)
+            except Exception:
+                pass
 
         threading.Thread(target=run_all, daemon=True).start()
 
