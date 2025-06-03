@@ -489,13 +489,18 @@ if __name__ == "__main__":
 
     action_frame = ttk.Frame(main_frame)
     action_frame.grid(row=8, column=0, columnspan=2, pady=5, sticky="ew")
-    action_frame.columnconfigure((0,1), weight=1)
-    ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
-    ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
+    action_frame.columnconfigure((0,1,2), weight=1)
 
     log_text = scrolledtext.ScrolledText(root, width=80, height=20, state="disabled")
     log_text.grid(row=1, column=0, columnspan=1, pady=10, sticky="nsew")
     root.rowconfigure(1, weight=1)
+
+    def clear_log():
+        log_text.delete("1.0", tk.END)
+
+    ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
+    ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
+    ttk.Button(action_frame, text="🧹 Vider la console", command=clear_log).grid(row=0, column=2, padx=2, sticky="ew")
 
     status_var = tk.StringVar(value="")
     ttk.Label(root, textvariable=status_var).grid(row=2, column=0, sticky="w", padx=10)
