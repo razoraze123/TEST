@@ -5,6 +5,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 import unicodedata
 import time, random
+import requests
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -381,13 +382,72 @@ if __name__ == "__main__":
             subprocess.call(["open", path])
         else:
             subprocess.call(["xdg-open", path])
+
+    def start_flask_server():
+        def run():
+            import subprocess, sys
+            try:
+                subprocess.Popen([sys.executable, "flask_server.py"])
+                print("🚀 Serveur Flask démarré")
+            except Exception as e:
+                print(f"❌ Erreur lancement Flask: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
+    def load_batch():
+        batch = batch_var.get()
+        def run():
+            try:
+                resp = requests.get("http://localhost:5000/get-produits", params={"batch": batch})
+                print(resp.text)
+            except Exception as e:
+                print(f"❌ Erreur GET /get-produits: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
+    def upload_fiches():
+        directory = fiches_dir_var.get()
+        def run():
+            if not os.path.exists(directory):
+                print(f"❌ Dossier inexistant: {directory}")
+                return
+            fichiers = [f for f in os.listdir(directory) if f.endswith(".txt")]
+            for idx, fichier in enumerate(fichiers, start=1):
+                chemin = os.path.join(directory, fichier)
+                try:
+                    with open(chemin, "r", encoding="utf-8") as f:
+                        contenu = f.read()
+                    match = re.search(r"<h1[^>]*>(.*?)</h1>", contenu, re.IGNORECASE | re.DOTALL)
+                    nom = match.group(1).strip() if match else fichier
+                    data = {"id": idx, "nom": nom, "html": contenu}
+                    r = requests.post("http://localhost:5000/upload-fiche", json=data)
+                    print(f"{fichier} → {r.text}")
+                except Exception as e:
+                    print(f"❌ Erreur upload {fichier}: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
+    def list_fiches_api():
+        def run():
+            try:
+                r = requests.get("http://localhost:5000/list-fiches")
+                print(r.text)
+            except Exception as e:
+                print(f"❌ Erreur GET /list-fiches: {e}")
+        threading.Thread(target=run, daemon=True).start()
+
     root = tk.Tk()
     root.title("WooCommerce Scraper")
 
-    main_frame = ttk.Frame(root, padding=10)
-    main_frame.grid(row=0, column=0, sticky="nsew")
     root.columnconfigure(0, weight=1)
-    root.rowconfigure(0, weight=1)
+
+    notebook = ttk.Notebook(root)
+    notebook.grid(row=0, column=0, sticky="nsew")
+
+    scraper_tab = ttk.Frame(notebook, padding=10)
+    api_tab = ttk.Frame(notebook, padding=10)
+    notebook.add(scraper_tab, text="Scraper")
+    notebook.add(api_tab, text="API Flask")
+
+    main_frame = scraper_tab
+    main_frame.columnconfigure(0, weight=1)
 
     ttk.Label(main_frame, text="ID début").grid(row=0, column=0, sticky="w")
     ttk.Label(main_frame, text="ID fin").grid(row=0, column=1, sticky="w")
@@ -433,15 +493,39 @@ if __name__ == "__main__":
     ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
     ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
 
-    log_text = scrolledtext.ScrolledText(main_frame, width=80, height=20, state="disabled")
-    log_text.grid(row=9, column=0, columnspan=2, pady=10, sticky="nsew")
-    main_frame.rowconfigure(9, weight=1)
+    log_text = scrolledtext.ScrolledText(root, width=80, height=20, state="disabled")
+    log_text.grid(row=1, column=0, columnspan=1, pady=10, sticky="nsew")
+    root.rowconfigure(1, weight=1)
 
     status_var = tk.StringVar(value="")
-    ttk.Label(main_frame, textvariable=status_var).grid(row=10, column=0, columnspan=2, sticky="w")
+    ttk.Label(root, textvariable=status_var).grid(row=2, column=0, sticky="w", padx=10)
 
     sys.stdout = TextRedirector(log_text)
     sys.stderr = TextRedirector(log_text)
+
+    # === Widgets for API tab ===
+    api_tab.columnconfigure(1, weight=1)
+    ttk.Button(api_tab, text="Activer Flask", command=start_flask_server).grid(row=0, column=0, pady=5, sticky="w")
+
+    ttk.Label(api_tab, text="Batch").grid(row=1, column=0, sticky="w")
+    batch_var = tk.IntVar(value=1)
+    batch_spin = ttk.Spinbox(api_tab, from_=1, to=999, textvariable=batch_var, width=5)
+    batch_spin.grid(row=1, column=1, sticky="w")
+    ttk.Button(api_tab, text="Charger un batch", command=load_batch).grid(row=1, column=2, padx=5)
+
+    fiches_dir_var = tk.StringVar(value=os.path.join(base_dir, "fiche concurrents"))
+
+    def browse_fiches_dir():
+        path = filedialog.askdirectory()
+        if path:
+            fiches_dir_var.set(path)
+
+    ttk.Label(api_tab, text="Dossier fiches").grid(row=2, column=0, sticky="w")
+    ttk.Entry(api_tab, textvariable=fiches_dir_var, width=40).grid(row=2, column=1, sticky="ew")
+    ttk.Button(api_tab, text="Parcourir", command=browse_fiches_dir).grid(row=2, column=2, padx=5)
+
+    ttk.Button(api_tab, text="Uploader une fiche", command=upload_fiches).grid(row=3, column=0, columnspan=2, pady=5, sticky="ew")
+    ttk.Button(api_tab, text="Lister fiches", command=list_fiches_api).grid(row=3, column=2, pady=5, sticky="ew")
 
     root.mainloop()
 
