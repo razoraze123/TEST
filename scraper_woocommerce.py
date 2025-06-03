@@ -18,10 +18,13 @@ chrome_binary_path = os.path.join(base_dir, r"../chromdrivers 137/chrome-win64/c
 fiche_dir = os.path.join(base_dir, "optimisation_fiches")
 liens_id_txt = os.path.join(base_dir, "liens_avec_id.txt")
 chemin_liens_images = os.path.join(base_dir, "liens_images_details.xlsx")
-fichier_excel = os.path.join(base_dir, "woocommerce_mix.xlsx")
 
+# Paths related to results will be defined at runtime from the UI
+fichier_excel = os.path.join(base_dir, "woocommerce_mix.xlsx")
 save_directory = os.path.join(base_dir, "fiche concurrents")
 recap_excel_path = os.path.join(base_dir, "recap_concurrents.xlsx")
+results_dir = ""
+json_dir = ""
 
 # === UTILS ===
 def clean_name(name):
@@ -46,15 +49,15 @@ def charger_liens_avec_id():
                 id_url_map[identifiant.upper()] = url
     return id_url_map
 
-def extraire_ids_depuis_input(input_str):
-    try:
-        start_id, end_id = input_str.upper().split("-")
-        start_num = int(start_id[1:])
-        end_num = int(end_id[1:])
-        return [f"A{i}" for i in range(start_num, end_num + 1)]
-    except:
-        print("⚠️ Format invalide. Utilise le format A1-A5.")
-        return []
+def charger_liste_ids():
+    ids = []
+    with open(liens_id_txt, "r", encoding="utf-8") as f:
+        for line in f:
+            part = line.strip().split(" ", 1)[0]
+            if part:
+                ids.append(part.upper())
+    ids.sort(key=lambda x: int(re.search(r"\d+", x).group()))
+    return ids
 
 # === SCRAPING PRODUITS (VARIANTES) ===
 def scrap_produits_par_ids(id_url_map, ids_selectionnes):
@@ -248,7 +251,7 @@ def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
 # === EXPORT JSON PAR BATCH ===
 def export_fiches_concurrents_json(taille_batch=5):
     dossier_source = save_directory
-    dossier_sortie = os.path.join(dossier_source, "batches_json")
+    dossier_sortie = json_dir if json_dir else os.path.join(dossier_source, "batches_json")
     os.makedirs(dossier_sortie, exist_ok=True)
     fichiers_txt = [f for f in os.listdir(dossier_source) if f.endswith(".txt")]
     fichiers_txt.sort()
@@ -300,6 +303,7 @@ if __name__ == "__main__":
     from tkinter import scrolledtext, ttk
 
     id_url_map = charger_liens_avec_id()
+    id_list = charger_liste_ids()
 
     class TextRedirector:
         def __init__(self, widget):
@@ -314,39 +318,60 @@ if __name__ == "__main__":
         def flush(self):
             pass
 
-    def get_ids_from_entry():
-        ids = extraire_ids_depuis_input(entry_ids.get())
+    def get_ids_from_selection():
+        try:
+            start = id_list.index(start_var.get())
+            end = id_list.index(end_var.get())
+            if start > end:
+                print("⛔ ID de début supérieur à l'ID de fin.\n")
+                return []
+            return id_list[start:end+1]
+        except ValueError:
+            print("⛔ Sélection d'ID invalide.\n")
+            return []
+
+    def execute_actions():
+        ids = get_ids_from_selection()
         if not ids:
-            print("⛔ Aucun ID valide fourni.\n")
-        return ids
+            return
 
-    def run_in_thread(func, start_msg="En cours...", end_msg="Terminé"):
-        def task():
-            status_var.set(start_msg)
-            func()
-            status_var.set(end_msg)
-        threading.Thread(target=task, daemon=True).start()
+        result_name = entry_result.get().strip() or "Resultats"
+        global results_dir, save_directory, recap_excel_path, fichier_excel, json_dir
+        results_dir = os.path.join(base_dir, result_name)
+        descriptions_dir = os.path.join(results_dir, "descriptions")
+        json_dir = os.path.join(results_dir, "json")
+        xlsx_dir = os.path.join(results_dir, "xlsx")
+        os.makedirs(descriptions_dir, exist_ok=True)
+        os.makedirs(json_dir, exist_ok=True)
+        os.makedirs(xlsx_dir, exist_ok=True)
+        save_directory = descriptions_dir
+        fichier_excel = os.path.join(xlsx_dir, "woocommerce_mix.xlsx")
+        recap_excel_path = os.path.join(xlsx_dir, "recap_concurrents.xlsx")
 
-    def run_scrap_variantes():
-        ids = get_ids_from_entry()
-        if ids:
-            run_in_thread(lambda: scrap_produits_par_ids(id_url_map, ids),
-                          "Scraping variantes...", "Scraping terminé")
+        actions = []
+        if var_variantes.get():
+            actions.append(lambda: scrap_produits_par_ids(id_url_map, ids))
+        if var_concurrents.get():
+            actions.append(lambda: scrap_fiches_concurrents(id_url_map, ids))
+        if var_json.get():
+            actions.append(export_fiches_concurrents_json)
 
-    def run_scrap_concurrents():
-        ids = get_ids_from_entry()
-        if ids:
-            run_in_thread(lambda: scrap_fiches_concurrents(id_url_map, ids),
-                          "Scraping concurrents...", "Scraping terminé")
+        if not actions:
+            print("⛔ Aucune action sélectionnée.\n")
+            return
 
-    def run_export_json():
-        run_in_thread(export_fiches_concurrents_json,
-                      "Export JSON...", "Export terminé")
+        def run_all():
+            status_var.set("Exécution en cours...")
+            for act in actions:
+                act()
+            status_var.set("Exécution terminée")
+
+        threading.Thread(target=run_all, daemon=True).start()
 
     def open_results_folder():
         import subprocess
         import platform
-        path = save_directory
+        path = results_dir if results_dir else save_directory
         if platform.system() == "Windows":
             os.startfile(path)
         elif platform.system() == "Darwin":
@@ -361,25 +386,41 @@ if __name__ == "__main__":
     root.columnconfigure(0, weight=1)
     root.rowconfigure(0, weight=1)
 
-    ttk.Label(main_frame, text="Plage d'IDs (A1-A5)").grid(row=0, column=0, sticky="w")
-    entry_ids = ttk.Entry(main_frame, width=20)
-    entry_ids.grid(row=1, column=0, pady=5, sticky="ew")
+    ttk.Label(main_frame, text="ID début").grid(row=0, column=0, sticky="w")
+    ttk.Label(main_frame, text="ID fin").grid(row=0, column=1, sticky="w")
 
-    btn_frame = ttk.Frame(main_frame)
-    btn_frame.grid(row=2, column=0, pady=5, sticky="ew")
-    btn_frame.columnconfigure((0, 1, 2, 3), weight=1)
+    start_var = tk.StringVar(value=id_list[0])
+    end_var = tk.StringVar(value=id_list[-1])
+    start_combo = ttk.Combobox(main_frame, values=id_list, textvariable=start_var, state="readonly", width=10)
+    end_combo = ttk.Combobox(main_frame, values=id_list, textvariable=end_var, state="readonly", width=10)
+    start_combo.grid(row=1, column=0, pady=5, sticky="ew")
+    end_combo.grid(row=1, column=1, pady=5, sticky="ew")
 
-    ttk.Button(btn_frame, text="Scraper variantes", command=run_scrap_variantes).grid(row=0, column=0, padx=2, sticky="ew")
-    ttk.Button(btn_frame, text="Scraper concurrents", command=run_scrap_concurrents).grid(row=0, column=1, padx=2, sticky="ew")
-    ttk.Button(btn_frame, text="Exporter JSON", command=run_export_json).grid(row=0, column=2, padx=2, sticky="ew")
-    ttk.Button(btn_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=3, padx=2, sticky="ew")
+    ttk.Label(main_frame, text="Dossier résultats").grid(row=2, column=0, sticky="w")
+    entry_result = ttk.Entry(main_frame, width=25)
+    entry_result.grid(row=3, column=0, columnspan=2, pady=5, sticky="ew")
+
+    chk_frame = ttk.Frame(main_frame)
+    chk_frame.grid(row=4, column=0, columnspan=2, pady=5, sticky="w")
+    var_variantes = tk.BooleanVar()
+    var_concurrents = tk.BooleanVar()
+    var_json = tk.BooleanVar()
+    ttk.Checkbutton(chk_frame, text="Scraper les variantes produits", variable=var_variantes).grid(row=0, column=0, sticky="w")
+    ttk.Checkbutton(chk_frame, text="Scraper les fiches produits concurrents", variable=var_concurrents).grid(row=1, column=0, sticky="w")
+    ttk.Checkbutton(chk_frame, text="Exporter les JSON", variable=var_json).grid(row=2, column=0, sticky="w")
+
+    action_frame = ttk.Frame(main_frame)
+    action_frame.grid(row=5, column=0, columnspan=2, pady=5, sticky="ew")
+    action_frame.columnconfigure((0,1), weight=1)
+    ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
+    ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
 
     log_text = scrolledtext.ScrolledText(main_frame, width=80, height=20, state="disabled")
-    log_text.grid(row=3, column=0, pady=10, sticky="nsew")
-    main_frame.rowconfigure(3, weight=1)
+    log_text.grid(row=6, column=0, columnspan=2, pady=10, sticky="nsew")
+    main_frame.rowconfigure(6, weight=1)
 
     status_var = tk.StringVar(value="")
-    ttk.Label(main_frame, textvariable=status_var).grid(row=4, column=0, sticky="w")
+    ttk.Label(main_frame, textvariable=status_var).grid(row=7, column=0, columnspan=2, sticky="w")
 
     sys.stdout = TextRedirector(log_text)
     sys.stderr = TextRedirector(log_text)
