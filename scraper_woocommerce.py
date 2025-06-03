@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import unicodedata
 import time, random
 import requests
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -351,6 +352,8 @@ if __name__ == "__main__":
             return
 
         result_name = entry_result.get().strip() or "Resultats"
+        if var_timestamp.get():
+            result_name += "_" + datetime.now().strftime("%Y-%m-%d_%H%M")
         global results_dir, save_directory, recap_excel_path, fichier_excel, json_dir
         selected_base = base_dir_var.get() or base_dir
         results_dir = os.path.join(selected_base, result_name)
@@ -492,8 +495,11 @@ if __name__ == "__main__":
     entry_result = ttk.Entry(main_frame, width=25)
     entry_result.grid(row=3, column=0, columnspan=2, pady=5, sticky="ew")
 
+    var_timestamp = tk.BooleanVar()
+    ttk.Checkbutton(main_frame, text="Ajouter un timestamp", variable=var_timestamp).grid(row=4, column=0, columnspan=2, sticky="w")
+
     chk_frame = ttk.Frame(main_frame)
-    chk_frame.grid(row=4, column=0, columnspan=2, pady=5, sticky="w")
+    chk_frame.grid(row=5, column=0, columnspan=2, pady=5, sticky="w")
     var_variantes = tk.BooleanVar()
     var_concurrents = tk.BooleanVar()
     var_json = tk.BooleanVar()
@@ -508,16 +514,16 @@ if __name__ == "__main__":
         if path:
             base_dir_var.set(path)
 
-    ttk.Label(main_frame, text="Dossier de sortie").grid(row=5, column=0, sticky="w")
+    ttk.Label(main_frame, text="Dossier de sortie").grid(row=6, column=0, sticky="w")
     base_dir_frame = ttk.Frame(main_frame)
-    base_dir_frame.grid(row=6, column=0, columnspan=2, pady=5, sticky="ew")
+    base_dir_frame.grid(row=7, column=0, columnspan=2, pady=5, sticky="ew")
     entry_base_dir = ttk.Entry(base_dir_frame, textvariable=base_dir_var, width=40)
     entry_base_dir.grid(row=0, column=0, sticky="ew")
     ttk.Button(base_dir_frame, text="Parcourir", command=browse_folder).grid(row=0, column=1, padx=5)
-    ttk.Label(main_frame, textvariable=base_dir_var).grid(row=7, column=0, columnspan=2, sticky="w")
+    ttk.Label(main_frame, textvariable=base_dir_var).grid(row=8, column=0, columnspan=2, sticky="w")
 
     action_frame = ttk.Frame(main_frame)
-    action_frame.grid(row=8, column=0, columnspan=2, pady=5, sticky="ew")
+    action_frame.grid(row=9, column=0, columnspan=2, pady=5, sticky="ew")
     action_frame.columnconfigure((0,1), weight=1)
     ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
     ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
