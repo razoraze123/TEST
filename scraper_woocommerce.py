@@ -20,6 +20,7 @@ liens_id_txt = os.path.join(base_dir, "liens_avec_id.txt")
 chemin_liens_images = os.path.join(base_dir, "liens_images_details.xlsx")
 
 # Paths related to results will be defined at runtime from the UI
+# base_dir can be overridden from the Tkinter interface
 fichier_excel = os.path.join(base_dir, "woocommerce_mix.xlsx")
 save_directory = os.path.join(base_dir, "fiche concurrents")
 recap_excel_path = os.path.join(base_dir, "recap_concurrents.xlsx")
@@ -300,7 +301,7 @@ if __name__ == "__main__":
     import sys
     import threading
     import tkinter as tk
-    from tkinter import scrolledtext, ttk
+    from tkinter import scrolledtext, ttk, filedialog
 
     id_url_map = charger_liens_avec_id()
     id_list = charger_liste_ids()
@@ -337,7 +338,8 @@ if __name__ == "__main__":
 
         result_name = entry_result.get().strip() or "Resultats"
         global results_dir, save_directory, recap_excel_path, fichier_excel, json_dir
-        results_dir = os.path.join(base_dir, result_name)
+        selected_base = base_dir_var.get() or base_dir
+        results_dir = os.path.join(selected_base, result_name)
         descriptions_dir = os.path.join(results_dir, "descriptions")
         json_dir = os.path.join(results_dir, "json")
         xlsx_dir = os.path.join(results_dir, "xlsx")
@@ -371,7 +373,8 @@ if __name__ == "__main__":
     def open_results_folder():
         import subprocess
         import platform
-        path = results_dir if results_dir else save_directory
+        default_path = os.path.join(base_dir_var.get() or base_dir, "fiche concurrents")
+        path = results_dir if results_dir else default_path
         if platform.system() == "Windows":
             os.startfile(path)
         elif platform.system() == "Darwin":
@@ -409,18 +412,33 @@ if __name__ == "__main__":
     ttk.Checkbutton(chk_frame, text="Scraper les fiches produits concurrents", variable=var_concurrents).grid(row=1, column=0, sticky="w")
     ttk.Checkbutton(chk_frame, text="Exporter les JSON", variable=var_json).grid(row=2, column=0, sticky="w")
 
+    base_dir_var = tk.StringVar(value=base_dir)
+
+    def browse_folder():
+        path = filedialog.askdirectory()
+        if path:
+            base_dir_var.set(path)
+
+    ttk.Label(main_frame, text="Dossier de sortie").grid(row=5, column=0, sticky="w")
+    base_dir_frame = ttk.Frame(main_frame)
+    base_dir_frame.grid(row=6, column=0, columnspan=2, pady=5, sticky="ew")
+    entry_base_dir = ttk.Entry(base_dir_frame, textvariable=base_dir_var, width=40)
+    entry_base_dir.grid(row=0, column=0, sticky="ew")
+    ttk.Button(base_dir_frame, text="Parcourir", command=browse_folder).grid(row=0, column=1, padx=5)
+    ttk.Label(main_frame, textvariable=base_dir_var).grid(row=7, column=0, columnspan=2, sticky="w")
+
     action_frame = ttk.Frame(main_frame)
-    action_frame.grid(row=5, column=0, columnspan=2, pady=5, sticky="ew")
+    action_frame.grid(row=8, column=0, columnspan=2, pady=5, sticky="ew")
     action_frame.columnconfigure((0,1), weight=1)
     ttk.Button(action_frame, text="Lancer l'exécution", command=execute_actions).grid(row=0, column=0, padx=2, sticky="ew")
     ttk.Button(action_frame, text="Ouvrir dossier résultats", command=open_results_folder).grid(row=0, column=1, padx=2, sticky="ew")
 
     log_text = scrolledtext.ScrolledText(main_frame, width=80, height=20, state="disabled")
-    log_text.grid(row=6, column=0, columnspan=2, pady=10, sticky="nsew")
-    main_frame.rowconfigure(6, weight=1)
+    log_text.grid(row=9, column=0, columnspan=2, pady=10, sticky="nsew")
+    main_frame.rowconfigure(9, weight=1)
 
     status_var = tk.StringVar(value="")
-    ttk.Label(main_frame, textvariable=status_var).grid(row=7, column=0, columnspan=2, sticky="w")
+    ttk.Label(main_frame, textvariable=status_var).grid(row=10, column=0, columnspan=2, sticky="w")
 
     sys.stdout = TextRedirector(log_text)
     sys.stderr = TextRedirector(log_text)
