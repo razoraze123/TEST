@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import unicodedata
 import time, random
 import requests
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -365,9 +366,40 @@ if __name__ == "__main__":
 
         def run_all():
             status_var.set("Exécution en cours...")
+            start_time = datetime.now()
+            errors = []
             for act in actions:
-                act()
+                try:
+                    act()
+                except Exception as e:
+                    msg = f"{act.__name__}: {e}"
+                    errors.append(msg)
+                    print(f"❌ Erreur dans {msg}")
             status_var.set("Exécution terminée")
+            end_time = datetime.now()
+
+            log_lines = [
+                f"Début: {start_time.strftime('%Y-%m-%d %H:%M:%S')}",
+                f"Fin: {end_time.strftime('%Y-%m-%d %H:%M:%S')}",
+                f"IDs: {ids[0]} - {ids[-1]}",
+                f"Fichier liens: {liens_id_txt}",
+            ]
+            if errors:
+                status = "; ".join(errors)
+            else:
+                status = "Succès"
+            log_lines.append(f"Statut: {status}")
+
+            log_content = "\n".join(log_lines)
+            log_name = start_time.strftime('%Y-%m-%d_%H%M.log')
+            log_path = os.path.join(results_dir, log_name)
+            try:
+                with open(log_path, "w", encoding="utf-8") as lf:
+                    lf.write(log_content)
+                print(log_content)
+                print(f"📄 Log enregistré: {log_path}")
+            except Exception as e:
+                print(f"❌ Erreur écriture log: {e}")
 
         threading.Thread(target=run_all, daemon=True).start()
 
