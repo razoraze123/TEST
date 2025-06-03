@@ -294,28 +294,60 @@ def export_fiches_concurrents_json(taille_batch=5):
 
 # === INTERFACE INTERACTIVE ===
 if __name__ == "__main__":
+    import sys
+    import tkinter as tk
+    from tkinter import scrolledtext
+
     id_url_map = charger_liens_avec_id()
-    plage_input = input("🟢 Quels identifiants veux-tu scraper ? (ex: A1-A5): ").strip()
-    ids_selectionnes = extraire_ids_depuis_input(plage_input)
 
-    if not ids_selectionnes:
-        print("⛔ Aucun ID valide fourni. Arrêt du script.")
-        exit()
+    class TextRedirector:
+        def __init__(self, widget):
+            self.widget = widget
 
-    if input("▶️ Lancer le scraping des variantes ? (oui/non): ").strip().lower() == "oui":
-        scrap_produits_par_ids(id_url_map, ids_selectionnes)
+        def write(self, text):
+            self.widget.configure(state="normal")
+            self.widget.insert(tk.END, text)
+            self.widget.see(tk.END)
+            self.widget.configure(state="disabled")
 
-    if input("▶️ Lancer le scraping des fiches produits concurrents ? (oui/non): ").strip().lower() == "oui":
-        scrap_fiches_concurrents(id_url_map, ids_selectionnes)
+        def flush(self):
+            pass
 
-    # Nouvelle fonctionnalité : export JSON batché
-    if input("▶️ Voulez-vous exporter les fiches produits concurrents en lots JSON ? (oui/non): ").strip().lower() == "oui":
-        try:
-            taille = input("  🔹 Taille des lots (appuie Entrée pour 5): ").strip()
-            taille_batch = int(taille) if taille else 5
-        except:
-            print("⚠️ Valeur invalide, on utilise la taille 5 par défaut.")
-            taille_batch = 5
-        export_fiches_concurrents_json(taille_batch)
+    def get_ids_from_entry():
+        ids = extraire_ids_depuis_input(entry_ids.get())
+        if not ids:
+            print("⛔ Aucun ID valide fourni.\n")
+        return ids
 
-    print("\n✅ Script terminé.")
+    def run_scrap_variantes():
+        ids = get_ids_from_entry()
+        if ids:
+            scrap_produits_par_ids(id_url_map, ids)
+
+    def run_scrap_concurrents():
+        ids = get_ids_from_entry()
+        if ids:
+            scrap_fiches_concurrents(id_url_map, ids)
+
+    def run_export_json():
+        export_fiches_concurrents_json()
+
+    root = tk.Tk()
+    root.title("WooCommerce Scraper")
+
+    tk.Label(root, text="Plage d'IDs (A1-A5)").pack(pady=4)
+    entry_ids = tk.Entry(root, width=20)
+    entry_ids.pack()
+
+    tk.Button(root, text="Scraper variantes", command=run_scrap_variantes).pack(fill="x", pady=2)
+    tk.Button(root, text="Scraper concurrents", command=run_scrap_concurrents).pack(fill="x", pady=2)
+    tk.Button(root, text="Exporter JSON", command=run_export_json).pack(fill="x", pady=2)
+
+    log_text = scrolledtext.ScrolledText(root, width=80, height=20, state="disabled")
+    log_text.pack(pady=4)
+
+    sys.stdout = TextRedirector(log_text)
+    sys.stderr = TextRedirector(log_text)
+
+    root.mainloop()
+
