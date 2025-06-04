@@ -42,8 +42,12 @@ class ImageOptimizer:
         logs = []
         for root, _, files in os.walk(folder):
             for f in files:
-                path = os.path.join(root, f)
-                logs.append(self.optimize_file(path))
+                ext = os.path.splitext(f)[1].lower()
+                if ext in [".png", ".webp"] or (
+                    self.jpegoptim_path and ext in [".jpg", ".jpeg"]
+                ):
+                    path = os.path.join(root, f)
+                    logs.append(self.optimize_file(path))
         return logs
 
 # EXEMPLE D'UTILISATION :
