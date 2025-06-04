@@ -30,6 +30,8 @@ python main.py
 
 This starts the PySide6 interface for scraping WooCommerce products.
 
+Use the "Mode sans t\u00eate (headless)" checkbox in the settings page to run Chrome without opening a visible window.
+
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
 

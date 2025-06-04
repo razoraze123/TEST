@@ -569,6 +569,10 @@ class MainWindow(QMainWindow):
         binary_layout.addWidget(btn_binary)
         layout.addLayout(binary_layout)
 
+        self.cb_headless = QCheckBox("Mode sans t\u00eate (headless)")
+        self.cb_headless.setChecked(True)
+        layout.addWidget(self.cb_headless)
+
         return page
 
     def _stop_worker(self, tab=None):
@@ -604,6 +608,7 @@ class MainWindow(QMainWindow):
 
         driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
         binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
+        headless = self.cb_headless.isChecked()
 
         def task(progress_callback, should_stop):
             self.scraper.prepare_results_dir(base, name)
@@ -629,14 +634,16 @@ class MainWindow(QMainWindow):
             if 'variantes' in sections:
                 ok, err = self.scraper.scrap_produits_par_ids(
                     id_url_map, ids_selectionnes, driver_path, binary_path,
-                    progress_callback=scaled_progress, should_stop=should_stop)
+                    progress_callback=scaled_progress, should_stop=should_stop,
+                    headless=headless)
                 summary.append(f"Variantes: {ok} OK, {err} erreurs")
                 done += 1
 
             if 'concurrents' in sections:
                 ok, err = self.scraper.scrap_fiches_concurrents(
                     id_url_map, ids_selectionnes, driver_path, binary_path,
-                    progress_callback=scaled_progress, should_stop=should_stop)
+                    progress_callback=scaled_progress, should_stop=should_stop,
+                    headless=headless)
                 summary.append(f"Concurrents: {ok} OK, {err} erreurs")
                 done += 1
 
@@ -762,6 +769,7 @@ class MainWindow(QMainWindow):
         links_file = self.input_img_links.text().strip() or self.scraper.liens_id_txt
         urls = self.scraper.charger_liste_urls(links_file)
         show_preview = self.cb_preview_images.isChecked()
+        headless = self.cb_headless.isChecked()
         self.preview_list.clear()
 
         def preview(path):
@@ -778,6 +786,7 @@ class MainWindow(QMainWindow):
                 progress_callback=progress_callback,
                 preview_callback=preview,
                 should_stop=should_stop,
+                headless=headless,
             )
 
         self._run_async(self.images_tab, task, console_output=self.console_output_images)
@@ -789,6 +798,7 @@ class MainWindow(QMainWindow):
             return
         dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
         show_preview = self.cb_preview_images.isChecked()
+        headless = self.cb_headless.isChecked()
         self.preview_list.clear()
 
         def preview(path):
@@ -805,6 +815,7 @@ class MainWindow(QMainWindow):
                 progress_callback=progress_callback,
                 preview_callback=preview,
                 should_stop=should_stop,
+                headless=headless,
             )
 
         self._run_async(self.images_tab, task, console_output=self.console_output_images)

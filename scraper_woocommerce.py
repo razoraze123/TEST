@@ -153,6 +153,7 @@ class ScraperCore:
         binary_path=None,
         batch_size=50,
         progress_callback=None,
+        headless=True,
     ):
         """Run selected scraping sections with progress aggregation."""
         progress_callback = progress_callback or self._update_progress
@@ -171,6 +172,7 @@ class ScraperCore:
                 driver_path,
                 binary_path,
                 progress_callback=scaled,
+                headless=headless,
             )
             summary.append(f"Variantes: {ok} OK, {err} erreurs")
             done += 1
@@ -182,6 +184,7 @@ class ScraperCore:
                 driver_path,
                 binary_path,
                 progress_callback=scaled,
+                headless=headless,
             )
             summary.append(f"Concurrents: {ok} OK, {err} erreurs")
             done += 1
@@ -195,13 +198,14 @@ class ScraperCore:
         return "\n".join(summary)
 
 # === SCRAPING PRODUITS (VARIANTES) ===
-    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False):
+    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         progress_callback = progress_callback or self._update_progress
         options = webdriver.ChromeOptions()
         options.binary_location = binary_path
-        options.add_argument("--headless")
+        if headless:
+            options.add_argument("--headless")
         options.add_argument('--disable-blink-features=AutomationControlled')
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
@@ -319,7 +323,7 @@ class ScraperCore:
         return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
-    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False):
+    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         progress_callback = progress_callback or self._update_progress
@@ -329,6 +333,8 @@ class ScraperCore:
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
         options.add_argument("--disable-blink-features=AutomationControlled")
+        if headless:
+            options.add_argument("--headless")
 
         driver = webdriver.Chrome(service=service, options=options)
         driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
@@ -490,6 +496,7 @@ class ScraperCore:
         progress_callback=None,
         preview_callback=None,
         should_stop=lambda: False,
+        headless=True,
     ):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
@@ -500,6 +507,8 @@ class ScraperCore:
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)
+        if headless:
+            options.add_argument("--headless")
         service = Service(executable_path=driver_path)
         driver = webdriver.Chrome(service=service, options=options)
         driver.execute_cdp_cmd(
