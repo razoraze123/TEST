@@ -337,3 +337,33 @@ class ScraperCore:
 
         print("\n✅ Export JSON terminé avec lots de 5 produits. Fichiers créés dans :", dossier_sortie)
 
+    # === SERVER INTERACTION ===
+    def run_flask_server(self, fiche_folder, batch_size=15):
+        import flask_server
+        flask_server.DOSSIER_FICHES = fiche_folder
+        flask_server.PRODUITS_PAR_BATCH = batch_size
+        flask_server.app.run(port=5000)
+
+    def upload_fiche(self, fiche_path, fiche_id=None):
+        if not os.path.exists(fiche_path):
+            print(f"Fichier introuvable: {fiche_path}")
+            return
+        with open(fiche_path, "r", encoding="utf-8") as f:
+            html = f.read()
+        name = os.path.basename(fiche_path)
+        fiche_id = fiche_id or os.path.splitext(name)[0]
+        payload = {"id": fiche_id, "nom": name, "html": html}
+        try:
+            r = requests.post("http://127.0.0.1:5000/upload-fiche", json=payload)
+            print(r.json())
+        except Exception as e:
+            print("Erreur upload:", e)
+
+    def list_fiches(self):
+        try:
+            r = requests.get("http://127.0.0.1:5000/list-fiches")
+            print(r.json())
+        except Exception as e:
+            print("Erreur list fiches:", e)
+
+
