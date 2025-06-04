@@ -1,7 +1,15 @@
 import sys
 import os
 
-from PySide6.QtCore import QObject, Signal, Qt, QThread, QTime
+from PySide6.QtCore import (
+    QObject,
+    Signal,
+    Qt,
+    QThread,
+    QTime,
+    QTimer,
+    QPropertyAnimation,
+)
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
@@ -20,6 +28,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QInputDialog,
+    QGraphicsOpacityEffect,
 )
 from scraper_woocommerce import ScraperCore
 import config
@@ -80,6 +89,20 @@ class MainWindow(QMainWindow):
         self._threads = []
         self.extra_links = {}
         self._setup_ui()
+
+        self.smooth_timer = QTimer(self)
+        self.smooth_timer.setInterval(30)
+        self.smooth_timer.timeout.connect(self._tick_progress)
+        self._target_progress = 0
+        self._current_progress = 0
+        self.current_worker = None
+
+        # subtle fade effect for remaining time label
+        self._time_effect = QGraphicsOpacityEffect(self.label_time)
+        self.label_time.setGraphicsEffect(self._time_effect)
+        self._fade_anim = QPropertyAnimation(self._time_effect, b"opacity", self)
+        self._fade_anim.setDuration(300)
+
         self._redirect_console()
 
     def _redirect_console(self):
@@ -101,7 +124,15 @@ class MainWindow(QMainWindow):
         worker.finished.connect(worker.deleteLater)
         self.progress_bar.setValue(0)
         self.label_time.setText("")
+        self._target_progress = 0
+        self._current_progress = 0
+        self.current_worker = worker
+        self.smooth_timer.start()
         self._threads.append(worker)
+        def stop_timer():
+            self.current_worker = None
+            self.smooth_timer.stop()
+        worker.finished.connect(stop_timer)
         worker.start()
 
     def _show_result(self, message):
@@ -109,26 +140,42 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Terminé", message)
 
     def _update_progress(self, worker, value):
+        self._target_progress = value
+
+    def _tick_progress(self):
+        if self._current_progress < self._target_progress:
+            self._current_progress += min(1, self._target_progress - self._current_progress)
+        elif self._current_progress > self._target_progress:
+            self._current_progress -= min(1, self._current_progress - self._target_progress)
+
+        value = int(self._current_progress)
         self.progress_bar.setValue(value)
-        if value <= 0:
-            self.label_time.setText("")
-            return
-        elapsed_ms = worker.start_time.msecsTo(QTime.currentTime())
-        elapsed = elapsed_ms / 1000
-        remaining = elapsed * (100 - value) / value
-        m, s = divmod(int(remaining), 60)
-        h, m = divmod(m, 60)
-        if remaining <= 5:
-            msg = "Extraction en cours, presque termin\u00e9..."
-        else:
-            msg = f"Temps restant estim\u00e9 : {h:02d}:{m:02d}:{s:02d}"
-        self.label_time.setText(msg)
         hue = int(value * 1.2)
         color = QColor.fromHsv(hue, 255, 200).name()
         self.progress_bar.setStyleSheet(
             f"QProgressBar {{border:1px solid #444; border-radius:8px; text-align:center; height:25px;}}"
             f"QProgressBar::chunk {{background-color:{color}; border-radius:8px;}}"
         )
+
+        if self.current_worker and self._current_progress > 0:
+            elapsed_ms = self.current_worker.start_time.msecsTo(QTime.currentTime())
+            elapsed = elapsed_ms / 1000
+            remaining = elapsed * (100 - self._current_progress) / self._current_progress
+            m, s = divmod(int(remaining), 60)
+            h, m = divmod(m, 60)
+            if remaining <= 5:
+                msg = "Extraction en cours, presque terminé..."
+            else:
+                msg = f"Temps restant estimé : {h:02d}:{m:02d}:{s:02d}"
+            if msg != self.label_time.text():
+                self.label_time.setText(msg)
+                self._time_effect.setOpacity(0.0)
+                self._fade_anim.stop()
+                self._fade_anim.setStartValue(0.0)
+                self._fade_anim.setEndValue(1.0)
+                self._fade_anim.start()
+        else:
+            self.label_time.setText("")
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
