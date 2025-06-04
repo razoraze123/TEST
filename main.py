@@ -1,8 +1,9 @@
 import sys
 import threading
 import time
+import os
 
-from PySide6.QtCore import QObject, Signal, Qt
+from PySide6.QtCore import QObject, Signal, Qt, QRunnable, QThreadPool, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from scraper_woocommerce import ScraperCore
 import config
 
 
@@ -33,9 +35,16 @@ class ConsoleOutput(QObject):
         pass
 
 
-def run_in_thread(func):
-    thread = threading.Thread(target=func, daemon=True)
-    thread.start()
+class Worker(QRunnable):
+    def __init__(self, func, *args, **kwargs):
+        super().__init__()
+        self.func = func
+        self.args = args
+        self.kwargs = kwargs
+
+    @Slot()
+    def run(self):
+        self.func(*self.args, **self.kwargs)
 
 
 class MainWindow(QMainWindow):
@@ -43,6 +52,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("WooCommerce Scraper")
         self.resize(900, 600)
+        self.thread_pool = QThreadPool()
+        self.scraper = ScraperCore()
         self._setup_ui()
         self._redirect_console()
 
@@ -51,6 +62,10 @@ class MainWindow(QMainWindow):
         self.console_output.outputWritten.connect(self.console.append)
         sys.stdout = self.console_output
         sys.stderr = self.console_output
+
+    def _run_async(self, func, *args, **kwargs):
+        worker = Worker(func, *args, **kwargs)
+        self.thread_pool.start(worker)
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
@@ -234,28 +249,68 @@ class MainWindow(QMainWindow):
 
         return page
 
-    # --- Logic placeholders ---------------------------------------------
+    # --- Logic ----------------------------------------------------------
     def _on_start_scraper(self):
-        def task():
-            print("D\u00e9marrage du scraper...")
-            time.sleep(2)
-            print("Scraper termin\u00e9.")
+        start_id = self.input_start.text().strip().upper()
+        end_id = self.input_end.text().strip().upper()
+        ids = self.scraper.charger_liste_ids()
 
-        run_in_thread(task)
+        try:
+            start_idx = ids.index(start_id) if start_id else 0
+        except ValueError:
+            start_idx = 0
+        try:
+            end_idx = ids.index(end_id) if end_id else len(ids) - 1
+        except ValueError:
+            end_idx = len(ids) - 1
+
+        ids_selectionnes = ids[start_idx:end_idx + 1]
+
+        result_folder = self.input_folder.text() or "results"
+
+        driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
+        binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
+
+        def task():
+            self.scraper.prepare_results_dir(self.scraper.base_dir, result_folder)
+            id_url_map = self.scraper.charger_liens_avec_id()
+            if self.cb_variantes.isChecked():
+                self.scraper.scrap_produits_par_ids(id_url_map, ids_selectionnes, driver_path, binary_path)
+            if self.cb_concurrents.isChecked():
+                self.scraper.scrap_fiches_concurrents(id_url_map, ids_selectionnes, driver_path, binary_path)
+            if self.cb_export_json.isChecked():
+                self.scraper.export_fiches_concurrents_json(self.spin_batch.value())
+
+        self._run_async(task)
 
     def _on_activate_flask(self):
-        def task():
-            print("Activation du serveur Flask...")
-            time.sleep(1)
-            print("Serveur Flask actif.")
+        folder = self.input_fiche_folder.text() or self.scraper.save_directory
+        batch = self.spin_batch.value()
 
-        run_in_thread(task)
+        def task():
+            self.scraper.run_flask_server(folder, batch)
+
+        self._run_async(task)
 
     def _on_upload_fiche(self):
-        print("Upload de la fiche en cours...")
+        folder = self.input_fiche_folder.text()
+
+        def task():
+            if not folder:
+                print("Aucun dossier de fiches défini.")
+                return
+            for filename in os.listdir(folder):
+                if filename.endswith(".txt"):
+                    path = os.path.join(folder, filename)
+                    self.scraper.upload_fiche(path)
+
+        self._run_async(task)
 
     def _on_list_fiches(self):
-        print("Listing des fiches...")
+        def task():
+            self.scraper.list_fiches()
+
+        self._run_async(task)
 
     def _choose_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier")
