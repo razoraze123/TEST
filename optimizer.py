@@ -20,11 +20,17 @@ class ImageOptimizer:
             elif ext == ".webp":
                 # "Optimisation" sans perte = recoder à qualité max (pas toujours utile, mais pour exemple)
                 tmpfile = filepath + ".tmp.webp"
-                result = subprocess.run([self.cwebp_path, "-lossless", filepath, "-o", tmpfile], capture_output=True, text=True)
+                result = subprocess.run(
+                    [self.cwebp_path, "-lossless", filepath, "-o", tmpfile],
+                    capture_output=True,
+                    text=True,
+                )
                 if result.returncode == 0:
                     os.replace(tmpfile, filepath)
                     log += "WebP optimisé avec cwebp."
                 else:
+                    if os.path.exists(tmpfile):
+                        os.remove(tmpfile)
                     log += f"Erreur cwebp: {result.stderr.strip()}"
             elif ext in [".jpg", ".jpeg"] and self.jpegoptim_path:
                 result = subprocess.run([self.jpegoptim_path, "--strip-all", "--all-progressive", filepath], capture_output=True, text=True)
