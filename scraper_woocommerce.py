@@ -91,7 +91,15 @@ class ScraperCore:
 
     # --- Runtime configuration ------------------------------------------
     def prepare_results_dir(self, selected_base, result_name):
-        self.results_dir = os.path.join(selected_base, result_name)
+        base_path = os.path.join(selected_base, result_name)
+        final_path = base_path
+        if os.path.exists(final_path):
+            idx = 2
+            while os.path.exists(f"{base_path}_{idx}"):
+                idx += 1
+            final_path = f"{base_path}_{idx}"
+
+        self.results_dir = final_path
         descriptions_dir = os.path.join(self.results_dir, "descriptions")
         self.json_dir = os.path.join(self.results_dir, "json")
         xlsx_dir = os.path.join(self.results_dir, "xlsx")

@@ -268,16 +268,33 @@ class MainWindow(QMainWindow):
         id_layout.addWidget(self.input_end)
         layout.addLayout(id_layout)
 
-        folder_layout = QHBoxLayout()
-        self.input_folder = QLineEdit()
-        self.input_folder.setPlaceholderText("Nom dossier de r\u00e9sultats")
-        folder_layout.addWidget(self.input_folder)
-        btn_browse = QPushButton("Parcourir")
-        btn_browse.clicked.connect(self._choose_folder)
-        folder_layout.addWidget(btn_browse)
+        folder_layout = QVBoxLayout()
+
+        parent_layout = QHBoxLayout()
+        self.input_parent = QLineEdit()
+        self.input_parent.setPlaceholderText("Dossier parent")
+        parent_layout.addWidget(self.input_parent)
+        btn_parent = QPushButton("Parcourir…")
+        btn_parent.clicked.connect(self._choose_parent)
+        parent_layout.addWidget(btn_parent)
+        folder_layout.addLayout(parent_layout)
+
+        name_layout = QHBoxLayout()
+        self.input_folder_name = QLineEdit()
+        self.input_folder_name.setPlaceholderText("Nom dossier de r\u00e9sultats")
+        name_layout.addWidget(self.input_folder_name)
         btn_new_folder = QPushButton("Créer dossier")
         btn_new_folder.clicked.connect(self._create_folder)
-        folder_layout.addWidget(btn_new_folder)
+        name_layout.addWidget(btn_new_folder)
+        folder_layout.addLayout(name_layout)
+
+        self.label_full_path = QLabel("")
+        folder_layout.addWidget(self.label_full_path)
+
+        self.input_parent.textChanged.connect(self._update_full_path)
+        self.input_folder_name.textChanged.connect(self._update_full_path)
+        self._update_full_path()
+
         layout.addLayout(folder_layout)
 
         liens_layout = QHBoxLayout()
@@ -402,13 +419,9 @@ class MainWindow(QMainWindow):
 
         ids_selectionnes = ids[start_idx:end_idx + 1]
 
-        result_folder = self.input_folder.text().strip() or "results"
-        if os.path.isabs(result_folder):
-            base = os.path.dirname(result_folder)
-            name = os.path.basename(result_folder)
-        else:
-            base = self.scraper.base_dir
-            name = result_folder
+        parent = self.input_parent.text().strip() or self.scraper.base_dir
+        name = self.input_folder_name.text().strip() or "results"
+        base = parent
 
         driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
         binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
@@ -485,10 +498,15 @@ class MainWindow(QMainWindow):
 
         self._run_async(task)
 
-    def _choose_folder(self):
+    def _choose_parent(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier")
         if folder:
-            self.input_folder.setText(folder)
+            self.input_parent.setText(folder)
+
+    def _update_full_path(self):
+        parent = self.input_parent.text() or self.scraper.base_dir
+        name = self.input_folder_name.text() or "results"
+        self.label_full_path.setText(os.path.join(parent, name))
 
     def _choose_fiche_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier des fiches")
@@ -508,10 +526,12 @@ class MainWindow(QMainWindow):
     def _create_folder(self):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
         if ok and name:
-            path = os.path.join(self.scraper.base_dir, name)
+            base = self.input_parent.text() or self.scraper.base_dir
+            path = os.path.join(base, name)
             try:
                 os.makedirs(path, exist_ok=True)
-                self.input_folder.setText(path)
+                self.input_parent.setText(base)
+                self.input_folder_name.setText(name)
                 QMessageBox.information(self, "Dossier", f"Créé : {path}")
             except Exception as e:
                 QMessageBox.warning(self, "Erreur", str(e))
