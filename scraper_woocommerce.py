@@ -195,7 +195,7 @@ class ScraperCore:
         return "\n".join(summary)
 
 # === SCRAPING PRODUITS (VARIANTES) ===
-    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
+    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         progress_callback = progress_callback or self._update_progress
@@ -218,6 +218,10 @@ class ScraperCore:
         total = len(ids_selectionnes)
         self._log(f"\n🚀 Début du scraping de {total} liens...\n")
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
+            if should_stop():
+                self._log("⏹ Interruption demandée.")
+                progress_callback(100)
+                break
             url = id_url_map.get(id_produit)
             if not url:
                 self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
@@ -315,7 +319,7 @@ class ScraperCore:
         return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
-    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
+    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         progress_callback = progress_callback or self._update_progress
@@ -337,6 +341,10 @@ class ScraperCore:
         n_err = 0
         total = len(ids_selectionnes)
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
+            if should_stop():
+                self._log("⏹ Interruption demandée.")
+                progress_callback(100)
+                break
             url = id_url_map.get(id_produit)
             if not url:
                 self._log(f"\n❌ ID introuvable dans le fichier : {id_produit}")
@@ -410,7 +418,7 @@ class ScraperCore:
         return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
-    def export_fiches_concurrents_json(self, taille_batch=50, progress_callback=None):
+    def export_fiches_concurrents_json(self, taille_batch=50, progress_callback=None, should_stop=lambda: False):
         progress_callback = progress_callback or self._update_progress
         dossier_source = self.save_directory
         dossier_sortie = self.json_dir if self.json_dir else os.path.join(dossier_source, "batches_json")
@@ -427,12 +435,19 @@ class ScraperCore:
         processed = 0
         nb_fichiers = 0
         for i in range(0, len(fichiers_txt), taille_batch):
+            if should_stop():
+                self._log("⏹ Interruption demandée.")
+                progress_callback(100)
+                break
             batch = fichiers_txt[i:i+taille_batch]
             data_batch = []
 
             nb_fichiers += 1
             self._log(f"\n🔹 Batch {nb_fichiers} : {len(batch)} fichier(s)")
             for fichier in batch:
+                if should_stop():
+                    progress_callback(100)
+                    break
                 chemin = os.path.join(dossier_source, fichier)
                 try:
                     with open(chemin, "r", encoding="utf-8") as f:
@@ -474,6 +489,7 @@ class ScraperCore:
         suffix="image-produit",
         progress_callback=None,
         preview_callback=None,
+        should_stop=lambda: False,
     ):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
@@ -495,6 +511,10 @@ class ScraperCore:
         failed = []
         total = len(urls)
         for idx, url in enumerate(urls, start=1):
+            if should_stop():
+                self._log("⏹ Interruption demandée.")
+                progress_callback(100)
+                break
             self._log(f"\n🔍 Produit {idx}/{total} : {url}")
             if idx > 1 and idx % 25 == 0:
                 self._log("🔄 Redémarrage du navigateur pour libérer la mémoire...")
@@ -519,6 +539,9 @@ class ScraperCore:
                 self._log(f"🖼️ {len(images)} image(s) trouvée(s)")
 
                 for i, img in enumerate(images):
+                    if should_stop():
+                        progress_callback(100)
+                        break
                     src = img.get_attribute("src")
                     if not src:
                         continue
