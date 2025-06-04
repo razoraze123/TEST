@@ -151,7 +151,7 @@ class ScraperCore:
         sections,
         driver_path=None,
         binary_path=None,
-        batch_size=5,
+        batch_size=50,
         progress_callback=None,
     ):
         """Run selected scraping sections with progress aggregation."""
@@ -410,7 +410,7 @@ class ScraperCore:
         return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
-    def export_fiches_concurrents_json(self, taille_batch=5, progress_callback=None):
+    def export_fiches_concurrents_json(self, taille_batch=50, progress_callback=None):
         progress_callback = progress_callback or self._update_progress
         dossier_source = self.save_directory
         dossier_sortie = self.json_dir if self.json_dir else os.path.join(dossier_source, "batches_json")
@@ -425,11 +425,13 @@ class ScraperCore:
             return match.group(1).strip() if match else ""
 
         processed = 0
+        nb_fichiers = 0
         for i in range(0, len(fichiers_txt), taille_batch):
             batch = fichiers_txt[i:i+taille_batch]
             data_batch = []
 
-            self._log(f"\n🔹 Batch {i//taille_batch + 1} : {len(batch)} fichiers")
+            nb_fichiers += 1
+            self._log(f"\n🔹 Batch {nb_fichiers} : {len(batch)} fichier(s)")
             for fichier in batch:
                 chemin = os.path.join(dossier_source, fichier)
                 try:
@@ -458,9 +460,9 @@ class ScraperCore:
             with open(chemin_sortie, "w", encoding="utf-8") as f_json:
                 json.dump(data_batch, f_json, ensure_ascii=False, indent=2)
 
-            self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie}")
+            self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie} ({len(batch)} produits)")
 
-        self._log("\n✅ Export JSON terminé avec lots de 5 produits. Fichiers créés dans :" + " " + dossier_sortie)
+        self._log(f"\n✅ Export JSON terminé : {nb_fichiers} fichier(s) généré(s) dans : {dossier_sortie}")
 
     # === SCRAPING IMAGES ===
     def scrap_images(
