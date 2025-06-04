@@ -85,7 +85,7 @@ class ScraperCore:
         self.recap_excel_path = os.path.join(xlsx_dir, "recap_concurrents.xlsx")
 
 # === SCRAPING PRODUITS (VARIANTES) ===
-    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None):
+    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         options = webdriver.ChromeOptions()
@@ -104,7 +104,8 @@ class ScraperCore:
         n_ok = 0
         n_err = 0
 
-        print(f"\n🚀 Début du scraping de {len(ids_selectionnes)} liens...\n")
+        total = len(ids_selectionnes)
+        print(f"\n🚀 Début du scraping de {total} liens...\n")
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
             url = id_url_map.get(id_produit)
             if not url:
@@ -193,6 +194,9 @@ class ScraperCore:
             else:
                 n_ok += 1
 
+            if progress_callback:
+                progress_callback(int(idx / total * 100))
+
         driver.quit()
         df = pd.DataFrame(woocommerce_rows)
         df.to_excel(self.fichier_excel, index=False)
@@ -200,7 +204,7 @@ class ScraperCore:
         return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
-    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None):
+    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         service = Service(executable_path=driver_path)
@@ -282,6 +286,9 @@ class ScraperCore:
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 n_err += 1
 
+            if progress_callback:
+                progress_callback(int(idx / total * 100))
+
         df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
         df.to_excel(self.recap_excel_path, index=False)
         driver.quit()
@@ -291,18 +298,20 @@ class ScraperCore:
         return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
-    def export_fiches_concurrents_json(self, taille_batch=5):
+    def export_fiches_concurrents_json(self, taille_batch=5, progress_callback=None):
         dossier_source = self.save_directory
         dossier_sortie = self.json_dir if self.json_dir else os.path.join(dossier_source, "batches_json")
         os.makedirs(dossier_sortie, exist_ok=True)
         fichiers_txt = [f for f in os.listdir(dossier_source) if f.endswith(".txt")]
         fichiers_txt.sort()
+        total = len(fichiers_txt)
         id_global = 1
 
         def extraire_h1(html):
             match = re.search(r"<h1[^>]*>(.*?)</h1>", html, re.IGNORECASE | re.DOTALL)
             return match.group(1).strip() if match else ""
 
+        processed = 0
         for i in range(0, len(fichiers_txt), taille_batch):
             batch = fichiers_txt[i:i+taille_batch]
             data_batch = []
@@ -327,6 +336,9 @@ class ScraperCore:
                     print(f"  ⚠️ Erreur lecture {fichier}: {e}")
                     continue
                 id_global += 1
+                processed += 1
+                if progress_callback:
+                    progress_callback(int(processed / total * 100))
 
             nom_fichier_sortie = f"batch_{i//taille_batch + 1}.json"
             chemin_sortie = os.path.join(dossier_sortie, nom_fichier_sortie)
