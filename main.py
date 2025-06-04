@@ -9,8 +9,9 @@ from PySide6.QtCore import (
     QTime,
     QTimer,
     QPropertyAnimation,
+    QSize,
 )
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
     QStackedLayout,
     QProgressBar,
     QTextEdit,
+    QListWidget,
+    QListWidgetItem,
     QVBoxLayout,
     QWidget,
     QInputDialog,
@@ -182,6 +185,20 @@ class MainWindow(QMainWindow):
             if self.progress_bar.value() < 100:
                 self.label_time.setText("")
 
+    def _show_page(self, page, progress_bar=None, label_time=None, console=None):
+        self.stack.setCurrentWidget(page)
+        if progress_bar and label_time and console:
+            self.progress_bar = progress_bar
+            self.label_time = label_time
+            self.console = console
+            try:
+                self.console_output.outputWritten.disconnect()
+            except Exception:
+                pass
+            self.console_output.outputWritten.connect(self.console.append)
+            self._time_effect.setParent(self.label_time)
+            self.label_time.setGraphicsEffect(self._time_effect)
+
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
         main_widget = QWidget()
@@ -198,9 +215,10 @@ class MainWindow(QMainWindow):
         sidebar_layout.setContentsMargins(10, 10, 10, 10)
 
         self.btn_scraper = QPushButton("Scraper")
+        self.btn_images = QPushButton("Scraping d'image")
         self.btn_api = QPushButton("API Flask")
         self.btn_settings = QPushButton("Param\u00e8tres")
-        for btn in (self.btn_scraper, self.btn_api, self.btn_settings):
+        for btn in (self.btn_scraper, self.btn_images, self.btn_api, self.btn_settings):
             btn.setMinimumHeight(40)
             sidebar_layout.addWidget(btn)
 
@@ -212,18 +230,20 @@ class MainWindow(QMainWindow):
 
         # Pages
         self.page_scraper = self._create_scraper_page()
+        self.page_image = self._create_image_page()
         self.page_api = self._create_api_page()
         self.page_settings = self._create_settings_page()
 
         self.stack.addWidget(self.page_scraper)
+        self.stack.addWidget(self.page_image)
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
 
-        self.btn_scraper.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_scraper))
+        self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console))
+        self.btn_images.clicked.connect(lambda: self._show_page(self.page_image, self.progress_bar_img, self.label_time_img, self.console_img))
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
-
-        self.stack.setCurrentWidget(self.page_scraper)
+        self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console)
 
         # Dark theme
         self.setStyleSheet(
@@ -339,6 +359,68 @@ class MainWindow(QMainWindow):
         self.console.setReadOnly(True)
         self.console.setFixedHeight(200)
         layout.addWidget(self.console)
+
+        return page
+
+    def _create_image_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        dest_layout = QHBoxLayout()
+        self.input_img_folder = QLineEdit()
+        self.input_img_folder.setPlaceholderText("Dossier images")
+        dest_layout.addWidget(self.input_img_folder)
+        btn_dest = QPushButton("Parcourir…")
+        btn_dest.clicked.connect(self._choose_img_folder)
+        dest_layout.addWidget(btn_dest)
+        layout.addLayout(dest_layout)
+
+        links_layout = QHBoxLayout()
+        self.input_img_links = QLineEdit(self.scraper.liens_id_txt)
+        links_layout.addWidget(self.input_img_links)
+        btn_links = QPushButton("Charger fichier")
+        btn_links.clicked.connect(self._choose_img_links)
+        links_layout.addWidget(btn_links)
+        layout.addLayout(links_layout)
+
+        single_layout = QHBoxLayout()
+        self.input_single_url = QLineEdit()
+        self.input_single_url.setPlaceholderText("Lien produit")
+        btn_test = QPushButton("Tester lien")
+        btn_test.clicked.connect(self._on_test_single_image)
+        single_layout.addWidget(self.input_single_url)
+        single_layout.addWidget(btn_test)
+        layout.addLayout(single_layout)
+
+        self.cb_preview_images = QCheckBox("Afficher aperçu images")
+        layout.addWidget(self.cb_preview_images)
+
+        self.btn_start_images = QPushButton("Lancer scraping images")
+        self.btn_start_images.clicked.connect(self._on_start_images)
+        layout.addWidget(self.btn_start_images)
+
+        self.progress_bar_img = QProgressBar()
+        self.progress_bar_img.setRange(0, 100)
+        self.progress_bar_img.setFixedHeight(25)
+        self.progress_bar_img.setStyleSheet(
+            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
+            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
+        )
+        layout.addWidget(self.progress_bar_img)
+        self.label_time_img = QLabel("")
+        layout.addWidget(self.label_time_img)
+
+        self.console_img = QTextEdit()
+        self.console_img.setReadOnly(True)
+        self.console_img.setFixedHeight(200)
+        layout.addWidget(self.console_img)
+
+        self.preview_list = QListWidget()
+        self.preview_list.setViewMode(QListWidget.IconMode)
+        self.preview_list.setIconSize(QSize(80, 80))
+        layout.addWidget(self.preview_list)
 
         return page
 
@@ -569,6 +651,66 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir le fichier d'URL", filter="Text files (*.txt)")
         if path:
             self.input_liens_file.setText(path)
+
+    def _choose_img_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Choisir dossier images")
+        if folder:
+            self.input_img_folder.setText(folder)
+
+    def _choose_img_links(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir le fichier d'URL", filter="Text files (*.txt)")
+        if path:
+            self.input_img_links.setText(path)
+
+    def _on_start_images(self):
+        dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
+        links_file = self.input_img_links.text().strip() or self.scraper.liens_id_txt
+        urls = self.scraper.charger_liste_urls(links_file)
+        show_preview = self.cb_preview_images.isChecked()
+        self.preview_list.clear()
+
+        def preview(path):
+            if show_preview:
+                item = QListWidgetItem(QIcon(path), os.path.basename(path))
+                self.preview_list.addItem(item)
+
+        def task(progress_callback):
+            return self.scraper.scrap_images(
+                urls,
+                dest,
+                driver_path=self.input_driver_path.text() or config.CHROME_DRIVER_PATH,
+                binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
+                progress_callback=progress_callback,
+                preview_callback=preview,
+            )
+
+        self._run_async(task)
+
+    def _on_test_single_image(self):
+        url = self.input_single_url.text().strip()
+        if not url:
+            QMessageBox.warning(self, "Lien", "Veuillez saisir un lien valide")
+            return
+        dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
+        show_preview = self.cb_preview_images.isChecked()
+        self.preview_list.clear()
+
+        def preview(path):
+            if show_preview:
+                item = QListWidgetItem(QIcon(path), os.path.basename(path))
+                self.preview_list.addItem(item)
+
+        def task(progress_callback):
+            return self.scraper.scrap_images(
+                [url],
+                dest,
+                driver_path=self.input_driver_path.text() or config.CHROME_DRIVER_PATH,
+                binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
+                progress_callback=progress_callback,
+                preview_callback=preview,
+            )
+
+        self._run_async(task)
 
     def _add_single_link(self):
         text, ok = QInputDialog.getText(self, "Ajouter lien", "ID|URL")

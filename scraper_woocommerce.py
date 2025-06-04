@@ -7,6 +7,8 @@ import unicodedata
 import time
 import random
 import requests
+import urllib.request
+from urllib.parse import urlparse
 import config
 
 from selenium import webdriver
@@ -88,6 +90,23 @@ class ScraperCore:
                     ids.append(part.upper())
         ids.sort(key=lambda x: int(re.search(r"\d+", x).group()))
         return ids
+
+    def charger_liste_urls(self, path=None):
+        path = path or self.liens_id_txt
+        urls = []
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                if '|' in line:
+                    part = line.split('|', 1)[1]
+                else:
+                    parts = line.split(' ', 1)
+                    part = parts[1] if len(parts) == 2 else ''
+                if part:
+                    urls.append(part.strip())
+        return urls
 
     # --- Runtime configuration ------------------------------------------
     def prepare_results_dir(self, selected_base, result_name):
@@ -442,6 +461,110 @@ class ScraperCore:
             self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie}")
 
         self._log("\n✅ Export JSON terminé avec lots de 5 produits. Fichiers créés dans :" + " " + dossier_sortie)
+
+    # === SCRAPING IMAGES ===
+    def scrap_images(
+        self,
+        urls,
+        dest_folder,
+        driver_path=None,
+        binary_path=None,
+        suffix="image-produit",
+        progress_callback=None,
+        preview_callback=None,
+    ):
+        driver_path = driver_path or self.chrome_driver_path
+        binary_path = binary_path or self.chrome_binary_path
+        progress_callback = progress_callback or self._update_progress
+
+        options = webdriver.ChromeOptions()
+        options.binary_location = binary_path
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        service = Service(executable_path=driver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+        )
+
+        os.makedirs(dest_folder, exist_ok=True)
+        failed = []
+        total = len(urls)
+        for idx, url in enumerate(urls, start=1):
+            self._log(f"\n🔍 Produit {idx}/{total} : {url}")
+            if idx > 1 and idx % 25 == 0:
+                self._log("🔄 Redémarrage du navigateur pour libérer la mémoire...")
+                driver.quit()
+                time.sleep(3)
+                driver = webdriver.Chrome(service=Service(executable_path=driver_path), options=options)
+                driver.execute_cdp_cmd(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+                )
+
+            try:
+                driver.get(url)
+                time.sleep(random.uniform(2.5, 4.5))
+
+                raw_title = driver.title.strip().split("|")[0].strip()
+                folder_name = self.clean_filename(raw_title)
+                folder = os.path.join(dest_folder, folder_name)
+                os.makedirs(folder, exist_ok=True)
+
+                images = driver.find_elements(By.CSS_SELECTOR, ".product-gallery__media img")
+                self._log(f"🖼️ {len(images)} image(s) trouvée(s)")
+
+                for i, img in enumerate(images):
+                    src = img.get_attribute("src")
+                    if not src:
+                        continue
+                    try:
+                        temp_path = os.path.join(folder, f"temp_{i}.webp")
+                        urllib.request.urlretrieve(src, temp_path)
+
+                        name = os.path.splitext(os.path.basename(urlparse(src).path))[0]
+                        name = re.sub(r"-\d{3,4}", "", name)
+                        name = re.sub(r"[-]+", "-", name).strip("-")
+                        alt_text = f"{name.replace('-', ' ')} – {suffix}"
+                        filename = self.clean_filename(alt_text) + ".webp"
+                        final_path = os.path.join(folder, filename)
+                        if os.path.exists(final_path):
+                            os.remove(final_path)
+                        os.rename(temp_path, final_path)
+
+                        self._log(f"   ✅ Image {i+1} → {filename}")
+                        self._log(f"      ↪️ Texte ALT : {alt_text}")
+                        if preview_callback:
+                            preview_callback(final_path)
+                        time.sleep(random.uniform(1, 2))
+                    except Exception as img_err:
+                        self._log(f"   ❌ Échec de téléchargement pour image {i+1} : {img_err}")
+                        failed.append((url, src))
+
+                self._log(f"📁 Téléchargement terminé pour : {folder_name}")
+            except Exception as e:
+                self._log(f"❌ Erreur sur la page {url} : {e}")
+
+            if progress_callback:
+                progress_callback(int(idx / total * 100))
+            self._log("-" * 80)
+            time.sleep(random.uniform(1.5, 3))
+
+        driver.quit()
+
+        if failed:
+            self._log("\n❗Images échouées :")
+            for u, src in failed:
+                self._log(f"Produit : {u} → Image : {src}")
+            self._log(f"Total échouées : {len(failed)}")
+        else:
+            self._log("\n✅ Toutes les images ont été téléchargées avec succès.")
+
+        if progress_callback:
+            progress_callback(100)
+        return "Scraping images terminé"
 
     # === SERVER INTERACTION ===
     def run_flask_server(self, fiche_folder, batch_size=15):
