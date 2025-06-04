@@ -218,21 +218,21 @@ class MainWindow(QMainWindow):
         self._show_page(self.page_scraper)
 
         # per-tab progress managers
-        self.scraper_tab = TabProgress(self.progress_bar, self.label_time, self.console, self)
-        self.images_tab = TabProgress(self.progress_bar_img, self.label_time_img, self.console_img, self)
+        self.scraper_tab = TabProgress(self.progress_bar, self.label_time, self.console_scraper, self)
+        self.images_tab = TabProgress(self.progress_bar_img, self.label_time_img, self.console_images, self)
 
     def _redirect_console(self):
         self.console_output_scraper = ConsoleOutput()
-        self.console_output_scraper.outputWritten.connect(self.console.append)
+        self.console_output_scraper.outputWritten.connect(self.console_scraper.append)
         self.console_output_images = ConsoleOutput()
-        self.console_output_images.outputWritten.connect(self.console_img.append)
+        self.console_output_images.outputWritten.connect(self.console_images.append)
 
     def _run_async(self, tab, func, *args, console_output=None, **kwargs):
         if console_output is None:
             console_output = self.console_output_scraper
         worker = Worker(func, *args, console_output=console_output, **kwargs)
 
-        console_widget = tab.console if tab else self.console
+        console_widget = tab.console if tab else self.console_scraper
         worker.status.connect(console_widget.append)
         worker.result.connect(self._show_result)
 
@@ -422,14 +422,15 @@ class MainWindow(QMainWindow):
         self.label_time = QLabel("")
         layout.addWidget(self.label_time)
 
-        btn_clear_console = QPushButton("Vider la console")
-        btn_clear_console.clicked.connect(self.console.clear)
-        layout.addWidget(btn_clear_console)
+        # Console for scraper tab
+        self.console_scraper = QTextEdit()
+        self.console_scraper.setReadOnly(True)
+        self.console_scraper.setFixedHeight(200)
 
-        self.console = QTextEdit()
-        self.console.setReadOnly(True)
-        self.console.setFixedHeight(200)
-        layout.addWidget(self.console)
+        btn_clear_console = QPushButton("Vider la console")
+        btn_clear_console.clicked.connect(self.console_scraper.clear)
+        layout.addWidget(btn_clear_console)
+        layout.addWidget(self.console_scraper)
 
         return page
 
@@ -486,14 +487,15 @@ class MainWindow(QMainWindow):
         self.label_time_img = QLabel("")
         layout.addWidget(self.label_time_img)
 
-        btn_clear_console_img = QPushButton("Vider la console")
-        btn_clear_console_img.clicked.connect(self.console_img.clear)
-        layout.addWidget(btn_clear_console_img)
+        # Console for image scraping tab
+        self.console_images = QTextEdit()
+        self.console_images.setReadOnly(True)
+        self.console_images.setFixedHeight(200)
 
-        self.console_img = QTextEdit()
-        self.console_img.setReadOnly(True)
-        self.console_img.setFixedHeight(200)
-        layout.addWidget(self.console_img)
+        btn_clear_console_img = QPushButton("Vider la console")
+        btn_clear_console_img.clicked.connect(self.console_images.clear)
+        layout.addWidget(btn_clear_console_img)
+        layout.addWidget(self.console_images)
 
         self.preview_list = QListWidget()
         self.preview_list.setViewMode(QListWidget.IconMode)
