@@ -422,6 +422,10 @@ class MainWindow(QMainWindow):
         self.label_time = QLabel("")
         layout.addWidget(self.label_time)
 
+        btn_clear_console = QPushButton("Vider la console")
+        btn_clear_console.clicked.connect(self.console.clear)
+        layout.addWidget(btn_clear_console)
+
         self.console = QTextEdit()
         self.console.setReadOnly(True)
         self.console.setFixedHeight(200)
@@ -481,6 +485,10 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.progress_bar_img)
         self.label_time_img = QLabel("")
         layout.addWidget(self.label_time_img)
+
+        btn_clear_console_img = QPushButton("Vider la console")
+        btn_clear_console_img.clicked.connect(self.console_img.clear)
+        layout.addWidget(btn_clear_console_img)
 
         self.console_img = QTextEdit()
         self.console_img.setReadOnly(True)
