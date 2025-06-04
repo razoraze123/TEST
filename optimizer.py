@@ -38,8 +38,8 @@ class ImageOptimizer:
             log += f"Exception: {str(e)}"
         return log
 
-    def optimize_folder(self, folder):
-        logs = []
+    def iter_optimize_folder(self, folder):
+        """Yield optimization logs for each eligible file in *folder*."""
         for root, _, files in os.walk(folder):
             for f in files:
                 ext = os.path.splitext(f)[1].lower()
@@ -47,8 +47,10 @@ class ImageOptimizer:
                     self.jpegoptim_path and ext in [".jpg", ".jpeg"]
                 ):
                     path = os.path.join(root, f)
-                    logs.append(self.optimize_file(path))
-        return logs
+                    yield self.optimize_file(path)
+
+    def optimize_folder(self, folder):
+        return list(self.iter_optimize_folder(folder))
 
 # EXEMPLE D'UTILISATION :
 if __name__ == "__main__":
@@ -59,6 +61,5 @@ if __name__ == "__main__":
     optimizer = ImageOptimizer(optipng, cwebp, jpegoptim_path=None)
 
     dossier_images = r"C:\Users\Lamine\Desktop\images_a_optimiser"  # change le chemin
-    logs = optimizer.optimize_folder(dossier_images)
-    for l in logs:
-        print(l)
+    for log in optimizer.iter_optimize_folder(dossier_images):
+        print(log)

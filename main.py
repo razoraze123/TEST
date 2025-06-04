@@ -920,10 +920,9 @@ class MainWindow(QMainWindow):
 
         def task(progress_callback, should_stop):
             total = len(image_files)
-            for i, path in enumerate(image_files, 1):
+            for i, log in enumerate(optimizer.iter_optimize_folder(folder), 1):
                 if should_stop():
                     break
-                log = optimizer.optimize_file(path)
                 self.console_output_optimizer.outputWritten.emit(log)
                 progress_callback(int(i / total * 100))
             progress_callback(100)
