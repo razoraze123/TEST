@@ -1,9 +1,7 @@
 import sys
-import threading
-import time
 import os
 
-from PySide6.QtCore import QObject, Signal, Qt, QRunnable, QThreadPool, Slot
+from PySide6.QtCore import QObject, Signal, Qt, QThread
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -35,16 +33,23 @@ class ConsoleOutput(QObject):
         pass
 
 
-class Worker(QRunnable):
+class Worker(QThread):
+    """Run a function in a separate thread and emit progress."""
+
+    progress = Signal(str)
+
     def __init__(self, func, *args, **kwargs):
         super().__init__()
         self.func = func
         self.args = args
         self.kwargs = kwargs
 
-    @Slot()
     def run(self):
-        self.func(*self.args, **self.kwargs)
+        self.progress.emit("start")
+        try:
+            self.func(*self.args, **self.kwargs)
+        finally:
+            self.progress.emit("done")
 
 
 class MainWindow(QMainWindow):
@@ -52,7 +57,6 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("WooCommerce Scraper")
         self.resize(900, 600)
-        self.thread_pool = QThreadPool()
         self.scraper = ScraperCore()
         self._setup_ui()
         self._redirect_console()
@@ -65,7 +69,9 @@ class MainWindow(QMainWindow):
 
     def _run_async(self, func, *args, **kwargs):
         worker = Worker(func, *args, **kwargs)
-        self.thread_pool.start(worker)
+        worker.progress.connect(self.console.append)
+        worker.finished.connect(worker.deleteLater)
+        worker.start()
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
