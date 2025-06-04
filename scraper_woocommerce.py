@@ -36,6 +36,9 @@ class ScraperCore:
         self.results_dir = ""
         self.json_dir = ""
 
+        self._progress = 0
+        self._logs = []
+
     # --- Utility helpers -------------------------------------------------
     @staticmethod
     def clean_name(name):
@@ -84,10 +87,76 @@ class ScraperCore:
         self.fichier_excel = os.path.join(xlsx_dir, "woocommerce_mix.xlsx")
         self.recap_excel_path = os.path.join(xlsx_dir, "recap_concurrents.xlsx")
 
+    # --- Progress / logging helpers ------------------------------------
+    def _update_progress(self, value):
+        self._progress = int(value)
+
+    def _log(self, message):
+        self._logs.append(str(message))
+        print(message)
+
+    def get_progress(self):
+        return self._progress
+
+    def get_logs(self):
+        return "\n".join(self._logs)
+
+    # --- High level orchestration -------------------------------------
+    def start_scraping(
+        self,
+        id_url_map,
+        ids_selectionnes,
+        sections,
+        driver_path=None,
+        binary_path=None,
+        batch_size=5,
+        progress_callback=None,
+    ):
+        """Run selected scraping sections with progress aggregation."""
+        progress_callback = progress_callback or self._update_progress
+        total = len(sections)
+        done = 0
+        summary = []
+
+        def scaled(p):
+            overall = int(done / total * 100 + p / total)
+            progress_callback(overall)
+
+        if 'variantes' in sections:
+            ok, err = self.scrap_produits_par_ids(
+                id_url_map,
+                ids_selectionnes,
+                driver_path,
+                binary_path,
+                progress_callback=scaled,
+            )
+            summary.append(f"Variantes: {ok} OK, {err} erreurs")
+            done += 1
+
+        if 'concurrents' in sections:
+            ok, err = self.scrap_fiches_concurrents(
+                id_url_map,
+                ids_selectionnes,
+                driver_path,
+                binary_path,
+                progress_callback=scaled,
+            )
+            summary.append(f"Concurrents: {ok} OK, {err} erreurs")
+            done += 1
+
+        if 'json' in sections:
+            self.export_fiches_concurrents_json(batch_size, progress_callback=scaled)
+            summary.append("Export JSON termin\u00e9")
+            done += 1
+
+        progress_callback(100)
+        return "\n".join(summary)
+
 # === SCRAPING PRODUITS (VARIANTES) ===
     def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
+        progress_callback = progress_callback or self._update_progress
         options = webdriver.ChromeOptions()
         options.binary_location = binary_path
         options.add_argument("--headless")
@@ -105,15 +174,15 @@ class ScraperCore:
         n_err = 0
 
         total = len(ids_selectionnes)
-        print(f"\n🚀 Début du scraping de {total} liens...\n")
+        self._log(f"\n🚀 Début du scraping de {total} liens...\n")
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
             url = id_url_map.get(id_produit)
             if not url:
-                print(f"❌ ID introuvable dans le fichier : {id_produit}")
+                self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
                 n_err += 1
                 continue
 
-            print(f"🔎 [{idx}/{len(ids_selectionnes)}] {id_produit} → {url}")
+            self._log(f"🔎 [{idx}/{len(ids_selectionnes)}] {id_produit} → {url}")
             try:
                 driver.get(url)
                 time.sleep(random.uniform(2.5, 3.5))
@@ -188,7 +257,7 @@ class ScraperCore:
                     })
 
             except Exception as e:
-                print(f"❌ Erreur sur {url} → {e}\n")
+                self._log(f"❌ Erreur sur {url} → {e}\n")
                 n_err += 1
                 continue
             else:
@@ -200,13 +269,14 @@ class ScraperCore:
         driver.quit()
         df = pd.DataFrame(woocommerce_rows)
         df.to_excel(self.fichier_excel, index=False)
-        print(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
+        self._log(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
         return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
     def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
+        progress_callback = progress_callback or self._update_progress
         service = Service(executable_path=driver_path)
         options = webdriver.ChromeOptions()
         options.binary_location = binary_path
@@ -227,13 +297,13 @@ class ScraperCore:
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
             url = id_url_map.get(id_produit)
             if not url:
-                print(f"\n❌ ID introuvable dans le fichier : {id_produit}")
+                self._log(f"\n❌ ID introuvable dans le fichier : {id_produit}")
                 recap_data.append(("?", "?", id_produit, "ID non trouvé"))
                 n_err += 1
                 continue
 
-            print(f"\n📦 {idx} / {total}")
-            print(f"🔗 {url} — ", end="")
+            self._log(f"\n📦 {idx} / {total}")
+            self._log(f"🔗 {url} — ")
 
             try:
                 driver.get(url)
@@ -278,11 +348,11 @@ class ScraperCore:
                 with open(txt_path, "w", encoding="utf-8") as f2:
                     f2.write(txt_content)
 
-                print(f"✅ Extraction OK ({filename})")
+                self._log(f"✅ Extraction OK ({filename})")
                 recap_data.append((filename, title, url, "Extraction OK"))
                 n_ok += 1
             except Exception as e:
-                print(f"❌ Extraction Échec — {str(e)}")
+                self._log(f"❌ Extraction Échec — {str(e)}")
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 n_err += 1
 
@@ -292,13 +362,14 @@ class ScraperCore:
         df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
         df.to_excel(self.recap_excel_path, index=False)
         driver.quit()
-        print("\n🎉 Extraction terminée. Résultats enregistrés dans :")
-        print(f"- 📁 Fiches : {self.save_directory}")
-        print(f"- 📊 Récapitulatif : {self.recap_excel_path}")
+        self._log("\n🎉 Extraction terminée. Résultats enregistrés dans :")
+        self._log(f"- 📁 Fiches : {self.save_directory}")
+        self._log(f"- 📊 Récapitulatif : {self.recap_excel_path}")
         return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
     def export_fiches_concurrents_json(self, taille_batch=5, progress_callback=None):
+        progress_callback = progress_callback or self._update_progress
         dossier_source = self.save_directory
         dossier_sortie = self.json_dir if self.json_dir else os.path.join(dossier_source, "batches_json")
         os.makedirs(dossier_sortie, exist_ok=True)
@@ -316,7 +387,7 @@ class ScraperCore:
             batch = fichiers_txt[i:i+taille_batch]
             data_batch = []
 
-            print(f"\n🔹 Batch {i//taille_batch + 1} : {len(batch)} fichiers")
+            self._log(f"\n🔹 Batch {i//taille_batch + 1} : {len(batch)} fichiers")
             for fichier in batch:
                 chemin = os.path.join(dossier_source, fichier)
                 try:
@@ -331,9 +402,9 @@ class ScraperCore:
                         "h1": h1,
                         "html": contenu.strip()
                     })
-                    print(f"  ✅ {fichier} — h1: {h1[:50]}...")
+                    self._log(f"  ✅ {fichier} — h1: {h1[:50]}...")
                 except Exception as e:
-                    print(f"  ⚠️ Erreur lecture {fichier}: {e}")
+                    self._log(f"  ⚠️ Erreur lecture {fichier}: {e}")
                     continue
                 id_global += 1
                 processed += 1
@@ -345,20 +416,21 @@ class ScraperCore:
             with open(chemin_sortie, "w", encoding="utf-8") as f_json:
                 json.dump(data_batch, f_json, ensure_ascii=False, indent=2)
 
-            print(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie}")
+            self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie}")
 
-        print("\n✅ Export JSON terminé avec lots de 5 produits. Fichiers créés dans :", dossier_sortie)
+        self._log("\n✅ Export JSON terminé avec lots de 5 produits. Fichiers créés dans :" + " " + dossier_sortie)
 
     # === SERVER INTERACTION ===
     def run_flask_server(self, fiche_folder, batch_size=15):
         import flask_server
+        self._log(f"Lancement du serveur Flask sur le dossier {fiche_folder}")
         flask_server.DOSSIER_FICHES = fiche_folder
         flask_server.PRODUITS_PAR_BATCH = batch_size
         flask_server.app.run(port=5000)
 
     def upload_fiche(self, fiche_path, fiche_id=None):
         if not os.path.exists(fiche_path):
-            print(f"Fichier introuvable: {fiche_path}")
+            self._log(f"Fichier introuvable: {fiche_path}")
             return
         with open(fiche_path, "r", encoding="utf-8") as f:
             html = f.read()
@@ -367,15 +439,15 @@ class ScraperCore:
         payload = {"id": fiche_id, "nom": name, "html": html}
         try:
             r = requests.post("http://127.0.0.1:5000/upload-fiche", json=payload)
-            print(r.json())
+            self._log(str(r.json()))
         except Exception as e:
-            print("Erreur upload:", e)
+            self._log(f"Erreur upload: {e}")
 
     def list_fiches(self):
         try:
             r = requests.get("http://127.0.0.1:5000/list-fiches")
-            print(r.json())
+            self._log(str(r.json()))
         except Exception as e:
-            print("Erreur list fiches:", e)
+            self._log(f"Erreur list fiches: {e}")
 
 
