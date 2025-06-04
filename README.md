@@ -35,7 +35,8 @@ Use the "Mode sans t\u00eate (headless)" checkbox in the settings page to run Ch
 ## Image Optimization Tools
 The project includes an optional image optimizer. Before using this feature,
 download `optipng.exe` and `cwebp.exe` and place them inside the
-`tools/optimizers/` directory at the root of the repository:
+`tools/optimizers/` directory at the root of the repository (or set their
+locations in the **Settings** tab):
 
 ```
 tools/
@@ -46,6 +47,8 @@ tools/
 
 These executables are required for PNG and WebP optimization. If they are
 missing, the optimizer will skip the corresponding formats.
+The fields are prefilled with `tools/optimizers/optipng.exe` and
+`tools/optimizers/cwebp.exe` but you can override them in the **Settings** tab.
 
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:

@@ -1,5 +1,6 @@
 import sys
 import os
+import json
 from collections import deque
 
 from PySide6.QtCore import (
@@ -214,6 +215,7 @@ class MainWindow(QMainWindow):
         self._threads = []
         self.extra_links = {}
         self._setup_ui()
+        self._load_optimizer_paths()
 
         self._redirect_console()
         self._show_page(self.page_scraper)
@@ -626,6 +628,24 @@ class MainWindow(QMainWindow):
         binary_layout.addWidget(btn_binary)
         layout.addLayout(binary_layout)
 
+        layout.addWidget(QLabel("Chemin d'optipng.exe"))
+        optipng_layout = QHBoxLayout()
+        self.input_optipng_path = QLineEdit(config.OPTIPNG_PATH)
+        btn_optipng = QPushButton("Parcourir…")
+        btn_optipng.clicked.connect(self._choose_optipng_path)
+        optipng_layout.addWidget(self.input_optipng_path)
+        optipng_layout.addWidget(btn_optipng)
+        layout.addLayout(optipng_layout)
+
+        layout.addWidget(QLabel("Chemin de cwebp.exe"))
+        cwebp_layout = QHBoxLayout()
+        self.input_cwebp_path = QLineEdit(config.CWEBP_PATH)
+        btn_cwebp = QPushButton("Parcourir…")
+        btn_cwebp.clicked.connect(self._choose_cwebp_path)
+        cwebp_layout.addWidget(self.input_cwebp_path)
+        cwebp_layout.addWidget(btn_cwebp)
+        layout.addLayout(cwebp_layout)
+
         self.cb_headless = QCheckBox("Mode sans t\u00eate (headless)")
         self.cb_headless.setChecked(True)
         layout.addWidget(self.cb_headless)
@@ -769,6 +789,18 @@ class MainWindow(QMainWindow):
         if path:
             self.input_binary_path.setText(path)
 
+    def _choose_optipng_path(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir optipng")
+        if path:
+            self.input_optipng_path.setText(path)
+            self._save_optimizer_paths()
+
+    def _choose_cwebp_path(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir cwebp")
+        if path:
+            self.input_cwebp_path.setText(path)
+            self._save_optimizer_paths()
+
     def _create_folder(self):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
         if ok and name:
@@ -832,6 +864,28 @@ class MainWindow(QMainWindow):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.console_optimizer.toPlainText())
 
+    def _save_optimizer_paths(self):
+        data = {
+            "optipng": self.input_optipng_path.text(),
+            "cwebp": self.input_cwebp_path.text(),
+        }
+        try:
+            with open(os.path.join(os.path.dirname(__file__), "optimizer_paths.json"), "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Erreur sauvegarde chemins optimizers: {e}")
+
+    def _load_optimizer_paths(self):
+        path = os.path.join(os.path.dirname(__file__), "optimizer_paths.json")
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                self.input_optipng_path.setText(data.get("optipng", self.input_optipng_path.text()))
+                self.input_cwebp_path.setText(data.get("cwebp", self.input_cwebp_path.text()))
+            except Exception as e:
+                print(f"Erreur chargement chemins optimizers: {e}")
+
     def _on_start_images(self):
         dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
         links_file = self.input_img_links.text().strip() or self.scraper.liens_id_txt
@@ -894,16 +948,25 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Dossier", "Veuillez choisir un dossier valide")
             return
 
-        optipng = os.path.join(self.scraper.base_dir, "tools", "optimizers", "optipng.exe")
-        cwebp = os.path.join(self.scraper.base_dir, "tools", "optimizers", "cwebp.exe")
+        optipng = self.input_optipng_path.text().strip() or config.OPTIPNG_PATH
+        cwebp = self.input_cwebp_path.text().strip() or config.CWEBP_PATH
+        self._save_optimizer_paths()
 
         missing = []
         if not os.path.isfile(optipng):
-            missing.append("optipng.exe")
+            missing.append((optipng, "https://sourceforge.net/projects/optipng/"))
         if not os.path.isfile(cwebp):
-            missing.append("cwebp.exe")
+            missing.append((cwebp, "https://developers.google.com/speed/webp/download"))
         if missing:
-            QMessageBox.critical(self, "Outils manquants", "\n".join(missing) + " introuvable(s)")
+            msg = "<b>Outils manquants :</b><ul>"
+            for path, url in missing:
+                msg += f"<li>{path} (<a href='{url}'>télécharger</a>)</li>"
+            msg += "</ul>"
+            box = QMessageBox(self)
+            box.setWindowTitle("Outils manquants")
+            box.setTextFormat(Qt.RichText)
+            box.setText(msg)
+            box.exec()
             return
 
         image_files = []
