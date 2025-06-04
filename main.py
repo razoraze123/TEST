@@ -1,7 +1,8 @@
 import sys
 import os
 
-from PySide6.QtCore import QObject, Signal, Qt, QThread
+from PySide6.QtCore import QObject, Signal, Qt, QThread, QTime
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -18,6 +19,7 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QInputDialog,
 )
 from scraper_woocommerce import ScraperCore
 import config
@@ -48,6 +50,7 @@ class Worker(QThread):
         self.args = args
         self.kwargs = kwargs
         self._running = True
+        self.start_time = None
 
     def _report(self, value):
         self.progress.emit(value)
@@ -59,6 +62,7 @@ class Worker(QThread):
 
     def run(self):
         self.status.emit("start")
+        self.start_time = QTime.currentTime()
         res = None
         try:
             res = self.func(self._report, *self.args, **self.kwargs)
@@ -74,6 +78,7 @@ class MainWindow(QMainWindow):
         self.resize(900, 600)
         self.scraper = ScraperCore()
         self._threads = []
+        self.extra_links = {}
         self._setup_ui()
         self._redirect_console()
 
@@ -86,7 +91,7 @@ class MainWindow(QMainWindow):
     def _run_async(self, func, *args, **kwargs):
         worker = Worker(func, *args, **kwargs)
         worker.status.connect(self.console.append)
-        worker.progress.connect(self.progress_bar.setValue)
+        worker.progress.connect(lambda v, w=worker: self._update_progress(w, v))
         worker.result.connect(self._show_result)
         def on_finished():
             self._threads.remove(worker)
@@ -95,12 +100,35 @@ class MainWindow(QMainWindow):
         worker.finished.connect(on_finished)
         worker.finished.connect(worker.deleteLater)
         self.progress_bar.setValue(0)
+        self.label_time.setText("")
         self._threads.append(worker)
         worker.start()
 
     def _show_result(self, message):
         if message:
             QMessageBox.information(self, "Terminé", message)
+
+    def _update_progress(self, worker, value):
+        self.progress_bar.setValue(value)
+        if value <= 0:
+            self.label_time.setText("")
+            return
+        elapsed_ms = worker.start_time.msecsTo(QTime.currentTime())
+        elapsed = elapsed_ms / 1000
+        remaining = elapsed * (100 - value) / value
+        m, s = divmod(int(remaining), 60)
+        h, m = divmod(m, 60)
+        if remaining <= 5:
+            msg = "Extraction en cours, presque termin\u00e9..."
+        else:
+            msg = f"Temps restant estim\u00e9 : {h:02d}:{m:02d}:{s:02d}"
+        self.label_time.setText(msg)
+        hue = int(value * 1.2)
+        color = QColor.fromHsv(hue, 255, 200).name()
+        self.progress_bar.setStyleSheet(
+            f"QProgressBar {{border:1px solid #444; border-radius:8px; text-align:center; height:25px;}}"
+            f"QProgressBar::chunk {{background-color:{color}; border-radius:8px;}}"
+        )
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
@@ -200,7 +228,21 @@ class MainWindow(QMainWindow):
         btn_browse = QPushButton("Parcourir")
         btn_browse.clicked.connect(self._choose_folder)
         folder_layout.addWidget(btn_browse)
+        btn_new_folder = QPushButton("Créer dossier")
+        btn_new_folder.clicked.connect(self._create_folder)
+        folder_layout.addWidget(btn_new_folder)
         layout.addLayout(folder_layout)
+
+        liens_layout = QHBoxLayout()
+        self.input_liens_file = QLineEdit(self.scraper.liens_id_txt)
+        liens_layout.addWidget(self.input_liens_file)
+        btn_liens = QPushButton("Charger fichier")
+        btn_liens.clicked.connect(self._choose_liens_file)
+        liens_layout.addWidget(btn_liens)
+        btn_add_link = QPushButton("Ajouter lien")
+        btn_add_link.clicked.connect(self._add_single_link)
+        liens_layout.addWidget(btn_add_link)
+        layout.addLayout(liens_layout)
 
         self.cb_variantes = QCheckBox("Scraper variantes")
         self.cb_concurrents = QCheckBox("Scraper concurrents")
@@ -215,7 +257,14 @@ class MainWindow(QMainWindow):
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
+        self.progress_bar.setFixedHeight(25)
+        self.progress_bar.setStyleSheet(
+            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
+            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
+        )
         layout.addWidget(self.progress_bar)
+        self.label_time = QLabel("")
+        layout.addWidget(self.label_time)
 
         self.console = QTextEdit()
         self.console.setReadOnly(True)
@@ -292,7 +341,8 @@ class MainWindow(QMainWindow):
     def _on_start_scraper(self):
         start_id = self.input_start.text().strip().upper()
         end_id = self.input_end.text().strip().upper()
-        ids = self.scraper.charger_liste_ids()
+        liens_file = self.input_liens_file.text().strip() or None
+        ids = self.scraper.charger_liste_ids(liens_file)
 
         try:
             start_idx = ids.index(start_id) if start_id else 0
@@ -305,14 +355,21 @@ class MainWindow(QMainWindow):
 
         ids_selectionnes = ids[start_idx:end_idx + 1]
 
-        result_folder = self.input_folder.text() or "results"
+        result_folder = self.input_folder.text().strip() or "results"
+        if os.path.isabs(result_folder):
+            base = os.path.dirname(result_folder)
+            name = os.path.basename(result_folder)
+        else:
+            base = self.scraper.base_dir
+            name = result_folder
 
         driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
         binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
 
         def task(progress_callback):
-            self.scraper.prepare_results_dir(self.scraper.base_dir, result_folder)
-            id_url_map = self.scraper.charger_liens_avec_id()
+            self.scraper.prepare_results_dir(base, name)
+            id_url_map = self.scraper.charger_liens_avec_id(liens_file)
+            id_url_map.update(self.extra_links)
 
             sections = []
             if self.cb_variantes.isChecked():
@@ -400,6 +457,33 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir le binaire Chrome")
         if path:
             self.input_binary_path.setText(path)
+
+    def _create_folder(self):
+        name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
+        if ok and name:
+            path = os.path.join(self.scraper.base_dir, name)
+            try:
+                os.makedirs(path, exist_ok=True)
+                self.input_folder.setText(path)
+                QMessageBox.information(self, "Dossier", f"Créé : {path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Erreur", str(e))
+
+    def _choose_liens_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir le fichier d'URL", filter="Text files (*.txt)")
+        if path:
+            self.input_liens_file.setText(path)
+
+    def _add_single_link(self):
+        text, ok = QInputDialog.getText(self, "Ajouter lien", "ID|URL")
+        if ok and text:
+            parts = text.split("|", 1)
+            if len(parts) == 2:
+                ident, url = parts[0].strip().upper(), parts[1].strip()
+                self.extra_links[ident] = url
+                self.console.append(f"Ajouté {ident} -> {url}")
+            else:
+                QMessageBox.warning(self, "Format", "Utiliser ID|URL")
 
     def closeEvent(self, event):
         """Ensure all running threads are stopped before closing."""
