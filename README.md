@@ -50,6 +50,14 @@ missing, the optimizer will skip the corresponding formats.
 The fields are prefilled with `tools/optimizers/optipng.exe` and
 `tools/optimizers/cwebp.exe` but you can override them in the **Settings** tab.
 
+### Using the Optimiser Images Tab
+Open the **Optimiser Images** tab from the sidebar and choose the folder
+containing PNG or WebP files. Click **Lancer l’optimisation** to start the
+process. Progress and messages appear in the console below the progress bar.
+You can clear the console or save its contents to a log file using the buttons
+provided. The paths to `optipng.exe` and `cwebp.exe` can be changed at any time
+in the **Settings** tab.
+
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
 
