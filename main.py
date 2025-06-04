@@ -896,22 +896,38 @@ class MainWindow(QMainWindow):
 
         optipng = os.path.join(self.scraper.base_dir, "tools", "optimizers", "optipng.exe")
         cwebp = os.path.join(self.scraper.base_dir, "tools", "optimizers", "cwebp.exe")
+
+        missing = []
+        if not os.path.isfile(optipng):
+            missing.append("optipng.exe")
+        if not os.path.isfile(cwebp):
+            missing.append("cwebp.exe")
+        if missing:
+            QMessageBox.critical(self, "Outils manquants", "\n".join(missing) + " introuvable(s)")
+            return
+
+        image_files = []
+        for root, _, filenames in os.walk(folder):
+            for f in filenames:
+                if f.lower().endswith((".png", ".webp")):
+                    image_files.append(os.path.join(root, f))
+
+        if not image_files:
+            QMessageBox.warning(self, "Images", "Aucun fichier PNG ou WebP trouvé dans ce dossier")
+            return
+
         optimizer = ImageOptimizer(optipng, cwebp)
 
         def task(progress_callback, should_stop):
-            files = []
-            for root, _, filenames in os.walk(folder):
-                for f in filenames:
-                    files.append(os.path.join(root, f))
-            total = len(files)
-            for i, path in enumerate(files, 1):
+            total = len(image_files)
+            for i, path in enumerate(image_files, 1):
                 if should_stop():
                     break
                 log = optimizer.optimize_file(path)
-                print(log)
+                self.console_output_optimizer.outputWritten.emit(log)
                 progress_callback(int(i / total * 100))
             progress_callback(100)
-            return f"Optimisation terminée : {total} fichiers"
+            return f"Optimisation terminée : {total} fichier(s)"
 
         self._run_async(self.optimizer_tab, task, console_output=self.console_output_optimizer)
 
