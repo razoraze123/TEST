@@ -47,9 +47,15 @@ class Worker(QThread):
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        self._running = True
 
     def _report(self, value):
         self.progress.emit(value)
+
+    def stop(self):
+        """Request the worker to stop."""
+        self._running = False
+        self.requestInterruption()
 
     def run(self):
         self.status.emit("start")
@@ -67,6 +73,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("WooCommerce Scraper")
         self.resize(900, 600)
         self.scraper = ScraperCore()
+        self._threads = []
         self._setup_ui()
         self._redirect_console()
 
@@ -81,8 +88,14 @@ class MainWindow(QMainWindow):
         worker.status.connect(self.console.append)
         worker.progress.connect(self.progress_bar.setValue)
         worker.result.connect(self._show_result)
+        def on_finished():
+            self._threads.remove(worker)
+            print("Thread terminé")
+
+        worker.finished.connect(on_finished)
         worker.finished.connect(worker.deleteLater)
         self.progress_bar.setValue(0)
+        self._threads.append(worker)
         worker.start()
 
     def _show_result(self, message):
@@ -388,9 +401,20 @@ class MainWindow(QMainWindow):
         if path:
             self.input_binary_path.setText(path)
 
+    def closeEvent(self, event):
+        """Ensure all running threads are stopped before closing."""
+        for worker in list(self._threads):
+            worker.stop()
+            worker.quit()
+            worker.wait()
+        print("Tous les threads correctement arrêtés, fermeture propre.")
+        super().closeEvent(event)
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
+    # Pour tester : lancez une action puis fermez la fenêtre.
+    # Aucun message "QThread: Destroyed while thread" ne doit apparaître.
     sys.exit(app.exec())
