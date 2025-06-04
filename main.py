@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+import config
 
 
 class ConsoleOutput(QObject):
@@ -211,8 +212,26 @@ class MainWindow(QMainWindow):
     def _create_settings_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setAlignment(Qt.AlignCenter)
-        layout.addWidget(QLabel("Param\u00e8tres"))
+        layout.setAlignment(Qt.AlignTop)
+
+        layout.addWidget(QLabel("Chemin du chromedriver"))
+        driver_layout = QHBoxLayout()
+        self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH)
+        btn_driver = QPushButton("Parcourir")
+        btn_driver.clicked.connect(self._choose_driver_path)
+        driver_layout.addWidget(self.input_driver_path)
+        driver_layout.addWidget(btn_driver)
+        layout.addLayout(driver_layout)
+
+        layout.addWidget(QLabel("Chemin du navigateur Chrome"))
+        binary_layout = QHBoxLayout()
+        self.input_binary_path = QLineEdit(config.CHROME_BINARY_PATH)
+        btn_binary = QPushButton("Parcourir")
+        btn_binary.clicked.connect(self._choose_binary_path)
+        binary_layout.addWidget(self.input_binary_path)
+        binary_layout.addWidget(btn_binary)
+        layout.addLayout(binary_layout)
+
         return page
 
     # --- Logic placeholders ---------------------------------------------
@@ -247,6 +266,16 @@ class MainWindow(QMainWindow):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier des fiches")
         if folder:
             self.input_fiche_folder.setText(folder)
+
+    def _choose_driver_path(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir chromedriver")
+        if path:
+            self.input_driver_path.setText(path)
+
+    def _choose_binary_path(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir le binaire Chrome")
+        if path:
+            self.input_binary_path.setText(path)
 
 
 if __name__ == "__main__":
