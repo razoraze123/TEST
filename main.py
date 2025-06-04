@@ -10,9 +10,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMainWindow,
+    QMessageBox,
     QPushButton,
     QSpinBox,
     QStackedLayout,
+    QProgressBar,
     QTextEdit,
     QVBoxLayout,
     QWidget,
@@ -36,7 +38,9 @@ class ConsoleOutput(QObject):
 class Worker(QThread):
     """Run a function in a separate thread and emit progress."""
 
-    progress = Signal(str)
+    progress = Signal(int)
+    status = Signal(str)
+    result = Signal(object)
 
     def __init__(self, func, *args, **kwargs):
         super().__init__()
@@ -44,12 +48,17 @@ class Worker(QThread):
         self.args = args
         self.kwargs = kwargs
 
+    def _report(self, value):
+        self.progress.emit(value)
+
     def run(self):
-        self.progress.emit("start")
+        self.status.emit("start")
+        res = None
         try:
-            self.func(*self.args, **self.kwargs)
+            res = self.func(self._report, *self.args, **self.kwargs)
         finally:
-            self.progress.emit("done")
+            self.status.emit("done")
+            self.result.emit(res)
 
 
 class MainWindow(QMainWindow):
@@ -69,9 +78,16 @@ class MainWindow(QMainWindow):
 
     def _run_async(self, func, *args, **kwargs):
         worker = Worker(func, *args, **kwargs)
-        worker.progress.connect(self.console.append)
+        worker.status.connect(self.console.append)
+        worker.progress.connect(self.progress_bar.setValue)
+        worker.result.connect(self._show_result)
         worker.finished.connect(worker.deleteLater)
+        self.progress_bar.setValue(0)
         worker.start()
+
+    def _show_result(self, message):
+        if message:
+            QMessageBox.information(self, "Terminé", message)
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
@@ -184,6 +200,10 @@ class MainWindow(QMainWindow):
         self.btn_start.clicked.connect(self._on_start_scraper)
         layout.addWidget(self.btn_start)
 
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setRange(0, 100)
+        layout.addWidget(self.progress_bar)
+
         self.console = QTextEdit()
         self.console.setReadOnly(True)
         self.console.setFixedHeight(200)
@@ -277,15 +297,45 @@ class MainWindow(QMainWindow):
         driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
         binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
 
-        def task():
+        def task(progress_callback):
             self.scraper.prepare_results_dir(self.scraper.base_dir, result_folder)
             id_url_map = self.scraper.charger_liens_avec_id()
+
+            sections = []
             if self.cb_variantes.isChecked():
-                self.scraper.scrap_produits_par_ids(id_url_map, ids_selectionnes, driver_path, binary_path)
+                sections.append('variantes')
             if self.cb_concurrents.isChecked():
-                self.scraper.scrap_fiches_concurrents(id_url_map, ids_selectionnes, driver_path, binary_path)
+                sections.append('concurrents')
             if self.cb_export_json.isChecked():
-                self.scraper.export_fiches_concurrents_json(self.spin_batch.value())
+                sections.append('json')
+
+            total = len(sections)
+            done = 0
+            summary = []
+
+            def scaled_progress(p):
+                overall = int(done / total * 100 + p / total)
+                progress_callback(overall)
+
+            if 'variantes' in sections:
+                ok, err = self.scraper.scrap_produits_par_ids(
+                    id_url_map, ids_selectionnes, driver_path, binary_path, progress_callback=scaled_progress)
+                summary.append(f"Variantes: {ok} OK, {err} erreurs")
+                done += 1
+
+            if 'concurrents' in sections:
+                ok, err = self.scraper.scrap_fiches_concurrents(
+                    id_url_map, ids_selectionnes, driver_path, binary_path, progress_callback=scaled_progress)
+                summary.append(f"Concurrents: {ok} OK, {err} erreurs")
+                done += 1
+
+            if 'json' in sections:
+                self.scraper.export_fiches_concurrents_json(self.spin_batch.value(), progress_callback=scaled_progress)
+                summary.append("Export JSON terminé")
+                done += 1
+
+            progress_callback(100)
+            return "\n".join(summary)
 
         self._run_async(task)
 
@@ -293,7 +343,7 @@ class MainWindow(QMainWindow):
         folder = self.input_fiche_folder.text() or self.scraper.save_directory
         batch = self.spin_batch.value()
 
-        def task():
+        def task(progress_callback):
             self.scraper.run_flask_server(folder, batch)
 
         self._run_async(task)
@@ -301,7 +351,7 @@ class MainWindow(QMainWindow):
     def _on_upload_fiche(self):
         folder = self.input_fiche_folder.text()
 
-        def task():
+        def task(progress_callback):
             if not folder:
                 print("Aucun dossier de fiches défini.")
                 return
@@ -313,7 +363,7 @@ class MainWindow(QMainWindow):
         self._run_async(task)
 
     def _on_list_fiches(self):
-        def task():
+        def task(progress_callback):
             self.scraper.list_fiches()
 
         self._run_async(task)
