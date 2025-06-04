@@ -1,5 +1,6 @@
 import sys
 import os
+from collections import deque
 
 from PySide6.QtCore import (
     QObject,
@@ -99,6 +100,10 @@ class MainWindow(QMainWindow):
         self._target_progress = 0
         self._current_progress = 0
         self.current_worker = None
+        self._time_samples = deque(maxlen=5)
+        self._last_progress_value = 0
+        self._last_progress_time = None
+        self._last_time_update = QTime.currentTime()
 
         # subtle fade effect for remaining time label
         self._time_effect = QGraphicsOpacityEffect(self.label_time)
@@ -131,6 +136,10 @@ class MainWindow(QMainWindow):
         self._target_progress = 0
         self._current_progress = 0
         self.current_worker = worker
+        self._time_samples.clear()
+        self._last_progress_value = 0
+        self._last_progress_time = None
+        self._last_time_update = QTime.currentTime()
         self.smooth_timer.start()
         self._threads.append(worker)
         def stop_timer():
@@ -164,24 +173,40 @@ class MainWindow(QMainWindow):
             f"QProgressBar {{border:1px solid #444; border-radius:8px; text-align:center; height:25px;}}"
             f"QProgressBar::chunk {{background-color:{color}; border-radius:8px;}}"
         )
+        now = QTime.currentTime()
+        if self.current_worker and value > 0:
+            if self._last_progress_time is None:
+                self._last_progress_time = now
+            if value > self._last_progress_value:
+                dt = self._last_progress_time.msecsTo(now) / 1000
+                dp = value - self._last_progress_value
+                if dt > 0 and dp > 0:
+                    self._time_samples.append(dt / dp)
+                self._last_progress_time = now
+                self._last_progress_value = value
 
-        if self.current_worker and self._current_progress > 0:
-            elapsed_ms = self.current_worker.start_time.msecsTo(QTime.currentTime())
-            elapsed = elapsed_ms / 1000
-            remaining = elapsed * (100 - self._current_progress) / self._current_progress
-            m, s = divmod(int(remaining), 60)
-            h, m = divmod(m, 60)
-            if remaining <= 5:
-                msg = "Extraction en cours, presque terminé..."
-            else:
-                msg = f"Temps restant estimé : {h:02d}:{m:02d}:{s:02d}"
-            if msg != self.label_time.text():
-                self.label_time.setText(msg)
-                self._time_effect.setOpacity(0.0)
-                self._fade_anim.stop()
-                self._fade_anim.setStartValue(0.0)
-                self._fade_anim.setEndValue(1.0)
-                self._fade_anim.start()
+            if self._last_time_update.msecsTo(now) >= 1000:
+                self._last_time_update = now
+                if self._time_samples:
+                    avg = sum(self._time_samples) / len(self._time_samples)
+                    remaining = avg * (100 - value)
+                else:
+                    elapsed_ms = self.current_worker.start_time.msecsTo(now)
+                    elapsed = elapsed_ms / 1000
+                    remaining = elapsed * (100 - value) / value
+                m, s = divmod(int(remaining), 60)
+                h, m = divmod(m, 60)
+                if remaining <= 5:
+                    msg = "Extraction en cours, presque terminé..."
+                else:
+                    msg = f"Temps restant estimé : {h:02d}:{m:02d}:{s:02d}"
+                if msg != self.label_time.text():
+                    self.label_time.setText(msg)
+                    self._time_effect.setOpacity(0.0)
+                    self._fade_anim.stop()
+                    self._fade_anim.setStartValue(0.0)
+                    self._fade_anim.setEndValue(1.0)
+                    self._fade_anim.start()
         else:
             if self.progress_bar.value() < 100:
                 self.label_time.setText("")
@@ -339,6 +364,14 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.cb_variantes)
         layout.addWidget(self.cb_concurrents)
         layout.addWidget(self.cb_export_json)
+
+        batch_json_layout = QHBoxLayout()
+        batch_json_layout.addWidget(QLabel("Taille batch JSON"))
+        self.spin_json_batch = QSpinBox()
+        self.spin_json_batch.setRange(1, 1000)
+        self.spin_json_batch.setValue(50)
+        batch_json_layout.addWidget(self.spin_json_batch)
+        layout.addLayout(batch_json_layout)
 
         self.btn_start = QPushButton("Lancer l'ex\u00e9cution")
         self.btn_start.clicked.connect(self._on_start_scraper)
@@ -547,7 +580,7 @@ class MainWindow(QMainWindow):
                 done += 1
 
             if 'json' in sections:
-                self.scraper.export_fiches_concurrents_json(self.spin_batch.value(), progress_callback=scaled_progress)
+                self.scraper.export_fiches_concurrents_json(self.spin_json_batch.value(), progress_callback=scaled_progress)
                 summary.append("Export JSON terminé")
                 done += 1
 
