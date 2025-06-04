@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect,
 )
 from scraper_woocommerce import ScraperCore
+from optimizer import ImageOptimizer
 import config
 
 
@@ -220,12 +221,15 @@ class MainWindow(QMainWindow):
         # per-tab progress managers
         self.scraper_tab = TabProgress(self.progress_bar, self.label_time, self.console_scraper, self)
         self.images_tab = TabProgress(self.progress_bar_img, self.label_time_img, self.console_images, self)
+        self.optimizer_tab = TabProgress(self.progress_bar_opt, self.label_time_opt, self.console_optimizer, self)
 
     def _redirect_console(self):
         self.console_output_scraper = ConsoleOutput()
         self.console_output_scraper.outputWritten.connect(self.console_scraper.append)
         self.console_output_images = ConsoleOutput()
         self.console_output_images.outputWritten.connect(self.console_images.append)
+        self.console_output_optimizer = ConsoleOutput()
+        self.console_output_optimizer.outputWritten.connect(self.console_optimizer.append)
 
     def _run_async(self, tab, func, *args, console_output=None, **kwargs):
         if console_output is None:
@@ -273,9 +277,10 @@ class MainWindow(QMainWindow):
 
         self.btn_scraper = QPushButton("Scraper")
         self.btn_images = QPushButton("Scraping d'image")
+        self.btn_optimizer = QPushButton("Optimiser Images")
         self.btn_api = QPushButton("API Flask")
         self.btn_settings = QPushButton("Param\u00e8tres")
-        for btn in (self.btn_scraper, self.btn_images, self.btn_api, self.btn_settings):
+        for btn in (self.btn_scraper, self.btn_images, self.btn_optimizer, self.btn_api, self.btn_settings):
             btn.setMinimumHeight(40)
             sidebar_layout.addWidget(btn)
 
@@ -288,16 +293,19 @@ class MainWindow(QMainWindow):
         # Pages
         self.page_scraper = self._create_scraper_page()
         self.page_image = self._create_image_page()
+        self.page_optimizer = self._create_optimizer_page()
         self.page_api = self._create_api_page()
         self.page_settings = self._create_settings_page()
 
         self.stack.addWidget(self.page_scraper)
         self.stack.addWidget(self.page_image)
+        self.stack.addWidget(self.page_optimizer)
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
 
         self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper))
         self.btn_images.clicked.connect(lambda: self._show_page(self.page_image))
+        self.btn_optimizer.clicked.connect(lambda: self._show_page(self.page_optimizer))
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
 
@@ -504,6 +512,55 @@ class MainWindow(QMainWindow):
 
         return page
 
+    def _create_optimizer_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        folder_layout = QHBoxLayout()
+        self.input_opt_folder = QLineEdit()
+        self.input_opt_folder.setPlaceholderText("Dossier à optimiser")
+        folder_layout.addWidget(self.input_opt_folder)
+        btn_browse = QPushButton("Parcourir…")
+        btn_browse.clicked.connect(self._choose_opt_folder)
+        folder_layout.addWidget(btn_browse)
+        layout.addLayout(folder_layout)
+
+        self.btn_start_opt = QPushButton("Lancer l’optimisation")
+        self.btn_start_opt.clicked.connect(self._on_start_optimizer)
+        layout.addWidget(self.btn_start_opt)
+        self.btn_stop_opt = QPushButton("Arrêter")
+        self.btn_stop_opt.clicked.connect(lambda: self._stop_worker(self.optimizer_tab))
+        layout.addWidget(self.btn_stop_opt)
+
+        self.progress_bar_opt = QProgressBar()
+        self.progress_bar_opt.setRange(0, 100)
+        self.progress_bar_opt.setFixedHeight(25)
+        self.progress_bar_opt.setStyleSheet(
+            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
+            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
+        )
+        layout.addWidget(self.progress_bar_opt)
+        self.label_time_opt = QLabel("")
+        layout.addWidget(self.label_time_opt)
+
+        self.console_optimizer = QTextEdit()
+        self.console_optimizer.setReadOnly(True)
+        self.console_optimizer.setFixedHeight(200)
+
+        console_btns = QHBoxLayout()
+        btn_clear = QPushButton("Vider la console")
+        btn_clear.clicked.connect(self.console_optimizer.clear)
+        console_btns.addWidget(btn_clear)
+        btn_save = QPushButton("Sauvegarder log")
+        btn_save.clicked.connect(self._save_opt_log)
+        console_btns.addWidget(btn_save)
+        layout.addLayout(console_btns)
+        layout.addWidget(self.console_optimizer)
+
+        return page
+
     def _create_api_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -580,7 +637,7 @@ class MainWindow(QMainWindow):
             if tab.current_worker:
                 tab.current_worker.stop()
         else:
-            for t in (self.scraper_tab, self.images_tab):
+            for t in (self.scraper_tab, self.images_tab, self.optimizer_tab):
                 if t.current_worker:
                     t.current_worker.stop()
 
@@ -764,6 +821,17 @@ class MainWindow(QMainWindow):
         if path:
             self.input_img_links.setText(path)
 
+    def _choose_opt_folder(self):
+        folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier à optimiser")
+        if folder:
+            self.input_opt_folder.setText(folder)
+
+    def _save_opt_log(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Sauvegarder log", filter="Text files (*.txt)")
+        if path:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(self.console_optimizer.toPlainText())
+
     def _on_start_images(self):
         dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
         links_file = self.input_img_links.text().strip() or self.scraper.liens_id_txt
@@ -819,6 +887,33 @@ class MainWindow(QMainWindow):
             )
 
         self._run_async(self.images_tab, task, console_output=self.console_output_images)
+
+    def _on_start_optimizer(self):
+        folder = self.input_opt_folder.text().strip()
+        if not folder:
+            QMessageBox.warning(self, "Dossier", "Veuillez choisir un dossier valide")
+            return
+
+        optipng = os.path.join(self.scraper.base_dir, "tools", "optimizers", "optipng.exe")
+        cwebp = os.path.join(self.scraper.base_dir, "tools", "optimizers", "cwebp.exe")
+        optimizer = ImageOptimizer(optipng, cwebp)
+
+        def task(progress_callback, should_stop):
+            files = []
+            for root, _, filenames in os.walk(folder):
+                for f in filenames:
+                    files.append(os.path.join(root, f))
+            total = len(files)
+            for i, path in enumerate(files, 1):
+                if should_stop():
+                    break
+                log = optimizer.optimize_file(path)
+                print(log)
+                progress_callback(int(i / total * 100))
+            progress_callback(100)
+            return f"Optimisation terminée : {total} fichiers"
+
+        self._run_async(self.optimizer_tab, task, console_output=self.console_output_optimizer)
 
     def _add_single_link(self):
         text, ok = QInputDialog.getText(self, "Ajouter lien", "ID|URL")
