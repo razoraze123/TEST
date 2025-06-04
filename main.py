@@ -527,11 +527,35 @@ class MainWindow(QMainWindow):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
         if ok and name:
             base = self.input_parent.text() or self.scraper.base_dir
-            path = os.path.join(base, name)
+            final_name = name
+            path = os.path.join(base, final_name)
+
+            if os.path.exists(path):
+                suffix = 1
+                # Find next available suffix
+                new_path = os.path.join(base, f"{name}_{suffix}")
+                while os.path.exists(new_path):
+                    suffix += 1
+                    new_path = os.path.join(base, f"{name}_{suffix}")
+
+                reply = QMessageBox.warning(
+                    self,
+                    "Dossier existe",
+                    f"{path} existe déjà.\nCréer {os.path.basename(new_path)} ?",
+                    QMessageBox.Yes | QMessageBox.Cancel,
+                )
+
+                if reply == QMessageBox.Yes:
+                    final_name = os.path.basename(new_path)
+                    path = new_path
+                else:
+                    return
+
             try:
-                os.makedirs(path, exist_ok=True)
+                os.makedirs(path, exist_ok=False)
                 self.input_parent.setText(base)
-                self.input_folder_name.setText(name)
+                self.input_folder_name.setText(final_name)
+                self._update_full_path()
                 QMessageBox.information(self, "Dossier", f"Créé : {path}")
             except Exception as e:
                 QMessageBox.warning(self, "Erreur", str(e))
