@@ -54,21 +54,36 @@ class ScraperCore:
         safe = safe.replace(" ", "-").lower()
         return safe
 
-    def charger_liens_avec_id(self):
+    def charger_liens_avec_id(self, path=None):
+        path = path or self.liens_id_txt
         id_url_map = {}
-        with open(self.liens_id_txt, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
-                parts = line.strip().split(" ", 1)
-                if len(parts) == 2:
+                line = line.strip()
+                if not line:
+                    continue
+                if '|' in line:
+                    identifiant, url = line.split('|', 1)
+                else:
+                    parts = line.split(" ", 1)
+                    if len(parts) != 2:
+                        continue
                     identifiant, url = parts
-                    id_url_map[identifiant.upper()] = url
+                id_url_map[identifiant.strip().upper()] = url.strip()
         return id_url_map
 
-    def charger_liste_ids(self):
+    def charger_liste_ids(self, path=None):
+        path = path or self.liens_id_txt
         ids = []
-        with open(self.liens_id_txt, "r", encoding="utf-8") as f:
+        with open(path, "r", encoding="utf-8") as f:
             for line in f:
-                part = line.strip().split(" ", 1)[0]
+                line = line.strip()
+                if not line:
+                    continue
+                if '|' in line:
+                    part = line.split('|', 1)[0]
+                else:
+                    part = line.split(" ", 1)[0]
                 if part:
                     ids.append(part.upper())
         ids.sort(key=lambda x: int(re.search(r"\d+", x).group()))
