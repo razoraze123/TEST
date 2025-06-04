@@ -57,11 +57,12 @@ class Worker(QThread):
     status = Signal(str)
     result = Signal(object)
 
-    def __init__(self, func, *args, **kwargs):
+    def __init__(self, func, *args, console_output=None, **kwargs):
         super().__init__()
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        self.console_output = console_output
         self._running = True
         self.start_time = None
 
@@ -82,12 +83,20 @@ class Worker(QThread):
         self.status.emit("start")
         self.start_time = QTime.currentTime()
         res = None
+        orig_stdout = sys.stdout
+        orig_stderr = sys.stderr
+        if self.console_output:
+            sys.stdout = self.console_output
+            sys.stderr = self.console_output
         try:
             res = self.func(self._report, lambda: self.isInterruptionRequested(), *self.args, **self.kwargs)
         except Worker._StopException:
             self.status.emit("interrupted")
             res = None
         finally:
+            if self.console_output:
+                sys.stdout = orig_stdout
+                sys.stderr = orig_stderr
             self.status.emit("done")
             self.result.emit(res)
 
@@ -123,13 +132,15 @@ class MainWindow(QMainWindow):
         self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console)
 
     def _redirect_console(self):
-        self.console_output = ConsoleOutput()
-        self.console_output.outputWritten.connect(self.console.append)
-        sys.stdout = self.console_output
-        sys.stderr = self.console_output
+        self.console_output_scraper = ConsoleOutput()
+        self.console_output_scraper.outputWritten.connect(self.console.append)
+        self.console_output_images = ConsoleOutput()
+        self.console_output_images.outputWritten.connect(self.console_img.append)
 
-    def _run_async(self, func, *args, **kwargs):
-        worker = Worker(func, *args, **kwargs)
+    def _run_async(self, func, *args, console_output=None, **kwargs):
+        if console_output is None:
+            console_output = self.console_output_scraper
+        worker = Worker(func, *args, console_output=console_output, **kwargs)
         worker.status.connect(self.console.append)
         worker.progress.connect(lambda v, w=worker: self._update_progress(w, v))
         worker.result.connect(self._show_result)
@@ -225,11 +236,6 @@ class MainWindow(QMainWindow):
             self.progress_bar = progress_bar
             self.label_time = label_time
             self.console = console
-            try:
-                self.console_output.outputWritten.disconnect()
-            except Exception:
-                pass
-            self.console_output.outputWritten.connect(self.console.append)
             self._time_effect.setParent(self.label_time)
             self.label_time.setGraphicsEffect(self._time_effect)
 
@@ -611,7 +617,7 @@ class MainWindow(QMainWindow):
             progress_callback(100)
             return "\n".join(summary)
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_scraper)
 
     def _on_activate_flask(self):
         folder = self.input_fiche_folder.text() or self.scraper.save_directory
@@ -620,7 +626,7 @@ class MainWindow(QMainWindow):
         def task(progress_callback, should_stop):
             self.scraper.run_flask_server(folder, batch)
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_scraper)
 
     def _on_upload_fiche(self):
         folder = self.input_fiche_folder.text()
@@ -634,13 +640,13 @@ class MainWindow(QMainWindow):
                     path = os.path.join(folder, filename)
                     self.scraper.upload_fiche(path)
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_scraper)
 
     def _on_list_fiches(self):
         def task(progress_callback, should_stop):
             self.scraper.list_fiches()
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_scraper)
 
     def _choose_parent(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier")
@@ -742,7 +748,7 @@ class MainWindow(QMainWindow):
                 should_stop=should_stop,
             )
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_images)
 
     def _on_test_single_image(self):
         url = self.input_single_url.text().strip()
@@ -769,7 +775,7 @@ class MainWindow(QMainWindow):
                 should_stop=should_stop,
             )
 
-        self._run_async(task)
+        self._run_async(task, console_output=self.console_output_images)
 
     def _add_single_link(self):
         text, ok = QInputDialog.getText(self, "Ajouter lien", "ID|URL")
