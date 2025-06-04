@@ -6,15 +6,16 @@ from bs4 import BeautifulSoup
 import unicodedata
 import time, random
 import requests
+import config
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
 # === CONFIGURATION ===
-base_dir = r"C:\Users\Lamine\Desktop\woocommerce\code\CODE POUR BOB"
-chrome_driver_path = os.path.join(base_dir, r"../chromdrivers 137/chromedriver-win64/chromedriver.exe")
-chrome_binary_path = os.path.join(base_dir, r"../chromdrivers 137/chrome-win64/chrome.exe")
+base_dir = config.BASE_DIR
+chrome_driver_path = config.CHROME_DRIVER_PATH
+chrome_binary_path = config.CHROME_BINARY_PATH
 
 fiche_dir = os.path.join(base_dir, "optimisation_fiches")
 liens_id_txt = os.path.join(base_dir, "liens_avec_id.txt")
@@ -62,14 +63,16 @@ def charger_liste_ids():
     return ids
 
 # === SCRAPING PRODUITS (VARIANTES) ===
-def scrap_produits_par_ids(id_url_map, ids_selectionnes):
+def scrap_produits_par_ids(id_url_map, ids_selectionnes, driver_path=None, binary_path=None):
+    driver_path = driver_path or config.CHROME_DRIVER_PATH
+    binary_path = binary_path or config.CHROME_BINARY_PATH
     options = webdriver.ChromeOptions()
-    options.binary_location = chrome_binary_path
+    options.binary_location = binary_path
     options.add_argument("--headless")
     options.add_argument('--disable-blink-features=AutomationControlled')
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
-    service = Service(executable_path=chrome_driver_path)
+    service = Service(executable_path=driver_path)
     driver = webdriver.Chrome(service=service, options=options)
     driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
         "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
@@ -175,10 +178,12 @@ def scrap_produits_par_ids(id_url_map, ids_selectionnes):
     return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
-def scrap_fiches_concurrents(id_url_map, ids_selectionnes):
-    service = Service(executable_path=chrome_driver_path)
+def scrap_fiches_concurrents(id_url_map, ids_selectionnes, driver_path=None, binary_path=None):
+    driver_path = driver_path or config.CHROME_DRIVER_PATH
+    binary_path = binary_path or config.CHROME_BINARY_PATH
+    service = Service(executable_path=driver_path)
     options = webdriver.ChromeOptions()
-    options.binary_location = chrome_binary_path
+    options.binary_location = binary_path
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option('useAutomationExtension', False)
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -366,9 +371,9 @@ if __name__ == "__main__":
 
         actions = []
         if var_variantes.get():
-            actions.append(lambda: scrap_produits_par_ids(id_url_map, ids))
+            actions.append(lambda: scrap_produits_par_ids(id_url_map, ids, chrome_driver_path, chrome_binary_path))
         if var_concurrents.get():
-            actions.append(lambda: scrap_fiches_concurrents(id_url_map, ids))
+            actions.append(lambda: scrap_fiches_concurrents(id_url_map, ids, chrome_driver_path, chrome_binary_path))
         if var_json.get():
             actions.append(export_fiches_concurrents_json)
 
