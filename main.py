@@ -101,90 +101,63 @@ class Worker(QThread):
             self.result.emit(res)
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("WooCommerce Scraper")
-        self.resize(900, 600)
-        self.scraper = ScraperCore()
-        self._threads = []
-        self.extra_links = {}
-        self._setup_ui()
+class TabProgress(QObject):
+    """Handle progress display and timing for a single tab."""
 
-        self.smooth_timer = QTimer(self)
-        self.smooth_timer.setInterval(30)
-        self.smooth_timer.timeout.connect(self._tick_progress)
-        self._target_progress = 0
-        self._current_progress = 0
+    def __init__(self, progress_bar, label_time, console, parent=None):
+        super().__init__(parent)
+        self.progress_bar = progress_bar
+        self.label_time = label_time
+        self.console = console
+
+        self.timer = QTimer(self)
+        self.timer.setInterval(30)
+        self.timer.timeout.connect(self._tick_progress)
+
+        self.target_progress = 0
+        self.current_progress = 0
         self.current_worker = None
-        self._time_samples = deque(maxlen=5)
-        self._last_progress_value = 0
-        self._last_progress_time = None
-        self._last_time_update = QTime.currentTime()
+        self.time_samples = deque(maxlen=5)
+        self.last_progress_value = 0
+        self.last_progress_time = None
+        self.last_time_update = QTime.currentTime()
 
-        # subtle fade effect for remaining time label
-        self._time_effect = QGraphicsOpacityEffect(self.label_time)
-        self.label_time.setGraphicsEffect(self._time_effect)
-        self._fade_anim = QPropertyAnimation(self._time_effect, b"opacity", self)
-        self._fade_anim.setDuration(300)
+        self.time_effect = QGraphicsOpacityEffect(self.label_time)
+        self.label_time.setGraphicsEffect(self.time_effect)
+        self.fade_anim = QPropertyAnimation(self.time_effect, b"opacity", self)
+        self.fade_anim.setDuration(300)
 
-        self._redirect_console()
-        self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console)
-
-    def _redirect_console(self):
-        self.console_output_scraper = ConsoleOutput()
-        self.console_output_scraper.outputWritten.connect(self.console.append)
-        self.console_output_images = ConsoleOutput()
-        self.console_output_images.outputWritten.connect(self.console_img.append)
-
-    def _run_async(self, func, *args, console_output=None, **kwargs):
-        if console_output is None:
-            console_output = self.console_output_scraper
-        worker = Worker(func, *args, console_output=console_output, **kwargs)
-        worker.status.connect(self.console.append)
-        worker.progress.connect(lambda v, w=worker: self._update_progress(w, v))
-        worker.result.connect(self._show_result)
-        def on_finished():
-            self._threads.remove(worker)
-            print("Thread terminé")
-
-        worker.finished.connect(on_finished)
-        worker.finished.connect(worker.deleteLater)
+    def start(self, worker):
         self.progress_bar.setValue(0)
         self.label_time.setText("")
-        self._target_progress = 0
-        self._current_progress = 0
+        self.target_progress = 0
+        self.current_progress = 0
         self.current_worker = worker
-        self._time_samples.clear()
-        self._last_progress_value = 0
-        self._last_progress_time = None
-        self._last_time_update = QTime.currentTime()
-        self.smooth_timer.start()
-        self._threads.append(worker)
-        def stop_timer():
-            self.current_worker = None
-            self.smooth_timer.stop()
-        worker.finished.connect(stop_timer)
-        worker.start()
+        self.time_samples.clear()
+        self.last_progress_value = 0
+        self.last_progress_time = None
+        self.last_time_update = QTime.currentTime()
+        self.timer.start()
+        worker.finished.connect(self.stop)
 
-    def _show_result(self, message):
-        if message:
-            QMessageBox.information(self, "Terminé", message)
+    def stop(self):
+        self.current_worker = None
+        self.timer.stop()
 
-    def _update_progress(self, worker, value):
-        self._target_progress = value
+    def update_progress(self, value):
+        self.target_progress = value
         if value >= 100:
             self.label_time.setText("Terminé !")
         elif self.label_time.text() == "Terminé !":
             self.label_time.setText("")
 
     def _tick_progress(self):
-        if self._current_progress < self._target_progress:
-            self._current_progress += min(1, self._target_progress - self._current_progress)
-        elif self._current_progress > self._target_progress:
-            self._current_progress -= min(1, self._current_progress - self._target_progress)
+        if self.current_progress < self.target_progress:
+            self.current_progress += min(1, self.target_progress - self.current_progress)
+        elif self.current_progress > self.target_progress:
+            self.current_progress -= min(1, self.current_progress - self.target_progress)
 
-        value = int(self._current_progress)
+        value = int(self.current_progress)
         self.progress_bar.setValue(value)
         hue = int(value * 1.2)
         color = QColor.fromHsv(hue, 255, 200).name()
@@ -194,20 +167,20 @@ class MainWindow(QMainWindow):
         )
         now = QTime.currentTime()
         if self.current_worker and value > 0:
-            if self._last_progress_time is None:
-                self._last_progress_time = now
-            if value > self._last_progress_value:
-                dt = self._last_progress_time.msecsTo(now) / 1000
-                dp = value - self._last_progress_value
+            if self.last_progress_time is None:
+                self.last_progress_time = now
+            if value > self.last_progress_value:
+                dt = self.last_progress_time.msecsTo(now) / 1000
+                dp = value - self.last_progress_value
                 if dt > 0 and dp > 0:
-                    self._time_samples.append(dt / dp)
-                self._last_progress_time = now
-                self._last_progress_value = value
+                    self.time_samples.append(dt / dp)
+                self.last_progress_time = now
+                self.last_progress_value = value
 
-            if self._last_time_update.msecsTo(now) >= 1000:
-                self._last_time_update = now
-                if self._time_samples:
-                    avg = sum(self._time_samples) / len(self._time_samples)
+            if self.last_time_update.msecsTo(now) >= 1000:
+                self.last_time_update = now
+                if self.time_samples:
+                    avg = sum(self.time_samples) / len(self.time_samples)
                     remaining = avg * (100 - value)
                 else:
                     elapsed_ms = self.current_worker.start_time.msecsTo(now)
@@ -221,23 +194,67 @@ class MainWindow(QMainWindow):
                     msg = f"Temps restant estimé : {h:02d}:{m:02d}:{s:02d}"
                 if msg != self.label_time.text():
                     self.label_time.setText(msg)
-                    self._time_effect.setOpacity(0.0)
-                    self._fade_anim.stop()
-                    self._fade_anim.setStartValue(0.0)
-                    self._fade_anim.setEndValue(1.0)
-                    self._fade_anim.start()
+                    self.time_effect.setOpacity(0.0)
+                    self.fade_anim.stop()
+                    self.fade_anim.setStartValue(0.0)
+                    self.fade_anim.setEndValue(1.0)
+                    self.fade_anim.start()
         else:
             if self.progress_bar.value() < 100:
                 self.label_time.setText("")
 
-    def _show_page(self, page, progress_bar=None, label_time=None, console=None):
+
+class MainWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("WooCommerce Scraper")
+        self.resize(900, 600)
+        self.scraper = ScraperCore()
+        self._threads = []
+        self.extra_links = {}
+        self._setup_ui()
+
+        self._redirect_console()
+        self._show_page(self.page_scraper)
+
+        # per-tab progress managers
+        self.scraper_tab = TabProgress(self.progress_bar, self.label_time, self.console, self)
+        self.images_tab = TabProgress(self.progress_bar_img, self.label_time_img, self.console_img, self)
+
+    def _redirect_console(self):
+        self.console_output_scraper = ConsoleOutput()
+        self.console_output_scraper.outputWritten.connect(self.console.append)
+        self.console_output_images = ConsoleOutput()
+        self.console_output_images.outputWritten.connect(self.console_img.append)
+
+    def _run_async(self, tab, func, *args, console_output=None, **kwargs):
+        if console_output is None:
+            console_output = self.console_output_scraper
+        worker = Worker(func, *args, console_output=console_output, **kwargs)
+
+        console_widget = tab.console if tab else self.console
+        worker.status.connect(console_widget.append)
+        worker.result.connect(self._show_result)
+
+        if tab:
+            worker.progress.connect(tab.update_progress)
+            tab.start(worker)
+
+        def on_finished():
+            self._threads.remove(worker)
+            print("Thread terminé")
+
+        worker.finished.connect(on_finished)
+        worker.finished.connect(worker.deleteLater)
+        self._threads.append(worker)
+        worker.start()
+
+    def _show_result(self, message):
+        if message:
+            QMessageBox.information(self, "Terminé", message)
+
+    def _show_page(self, page):
         self.stack.setCurrentWidget(page)
-        if progress_bar and label_time and console:
-            self.progress_bar = progress_bar
-            self.label_time = label_time
-            self.console = console
-            self._time_effect.setParent(self.label_time)
-            self.label_time.setGraphicsEffect(self._time_effect)
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
@@ -279,8 +296,8 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
 
-        self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console))
-        self.btn_images.clicked.connect(lambda: self._show_page(self.page_image, self.progress_bar_img, self.label_time_img, self.console_img))
+        self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper))
+        self.btn_images.clicked.connect(lambda: self._show_page(self.page_image))
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
 
@@ -391,7 +408,7 @@ class MainWindow(QMainWindow):
         self.btn_start.clicked.connect(self._on_start_scraper)
         layout.addWidget(self.btn_start)
         self.btn_stop = QPushButton("Arrêter")
-        self.btn_stop.clicked.connect(self._stop_current_worker)
+        self.btn_stop.clicked.connect(lambda: self._stop_worker(self.scraper_tab))
         layout.addWidget(self.btn_stop)
 
         self.progress_bar = QProgressBar()
@@ -451,7 +468,7 @@ class MainWindow(QMainWindow):
         self.btn_start_images.clicked.connect(self._on_start_images)
         layout.addWidget(self.btn_start_images)
         self.btn_stop_images = QPushButton("Arrêter")
-        self.btn_stop_images.clicked.connect(self._stop_current_worker)
+        self.btn_stop_images.clicked.connect(lambda: self._stop_worker(self.images_tab))
         layout.addWidget(self.btn_stop_images)
 
         self.progress_bar_img = QProgressBar()
@@ -487,7 +504,7 @@ class MainWindow(QMainWindow):
         self.btn_activate_flask.clicked.connect(self._on_activate_flask)
         layout.addWidget(self.btn_activate_flask)
         self.btn_stop_api = QPushButton("Arrêter")
-        self.btn_stop_api.clicked.connect(self._stop_current_worker)
+        self.btn_stop_api.clicked.connect(self._stop_worker)
         layout.addWidget(self.btn_stop_api)
 
         batch_layout = QHBoxLayout()
@@ -544,9 +561,14 @@ class MainWindow(QMainWindow):
 
         return page
 
-    def _stop_current_worker(self):
-        if self.current_worker:
-            self.current_worker.stop()
+    def _stop_worker(self, tab=None):
+        if tab:
+            if tab.current_worker:
+                tab.current_worker.stop()
+        else:
+            for t in (self.scraper_tab, self.images_tab):
+                if t.current_worker:
+                    t.current_worker.stop()
 
     # --- Logic ----------------------------------------------------------
     def _on_start_scraper(self):
@@ -617,7 +639,7 @@ class MainWindow(QMainWindow):
             progress_callback(100)
             return "\n".join(summary)
 
-        self._run_async(task, console_output=self.console_output_scraper)
+        self._run_async(self.scraper_tab, task, console_output=self.console_output_scraper)
 
     def _on_activate_flask(self):
         folder = self.input_fiche_folder.text() or self.scraper.save_directory
@@ -626,7 +648,7 @@ class MainWindow(QMainWindow):
         def task(progress_callback, should_stop):
             self.scraper.run_flask_server(folder, batch)
 
-        self._run_async(task, console_output=self.console_output_scraper)
+        self._run_async(None, task, console_output=self.console_output_scraper)
 
     def _on_upload_fiche(self):
         folder = self.input_fiche_folder.text()
@@ -640,13 +662,13 @@ class MainWindow(QMainWindow):
                     path = os.path.join(folder, filename)
                     self.scraper.upload_fiche(path)
 
-        self._run_async(task, console_output=self.console_output_scraper)
+        self._run_async(None, task, console_output=self.console_output_scraper)
 
     def _on_list_fiches(self):
         def task(progress_callback, should_stop):
             self.scraper.list_fiches()
 
-        self._run_async(task, console_output=self.console_output_scraper)
+        self._run_async(None, task, console_output=self.console_output_scraper)
 
     def _choose_parent(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier")
@@ -748,7 +770,7 @@ class MainWindow(QMainWindow):
                 should_stop=should_stop,
             )
 
-        self._run_async(task, console_output=self.console_output_images)
+        self._run_async(self.images_tab, task, console_output=self.console_output_images)
 
     def _on_test_single_image(self):
         url = self.input_single_url.text().strip()
@@ -775,7 +797,7 @@ class MainWindow(QMainWindow):
                 should_stop=should_stop,
             )
 
-        self._run_async(task, console_output=self.console_output_images)
+        self._run_async(self.images_tab, task, console_output=self.console_output_images)
 
     def _add_single_link(self):
         text, ok = QInputDialog.getText(self, "Ajouter lien", "ID|URL")
@@ -784,7 +806,7 @@ class MainWindow(QMainWindow):
             if len(parts) == 2:
                 ident, url = parts[0].strip().upper(), parts[1].strip()
                 self.extra_links[ident] = url
-                self.console.append(f"Ajouté {ident} -> {url}")
+                self.scraper_tab.console.append(f"Ajouté {ident} -> {url}")
             else:
                 QMessageBox.warning(self, "Format", "Utiliser ID|URL")
 
