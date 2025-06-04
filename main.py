@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
+from ui.main_window import DashboardWindow
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
 import config
@@ -1016,7 +1017,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = DashboardWindow()
     window.show()
     # Pour tester : lancez une action puis fermez la fenêtre.
     # Aucun message "QThread: Destroyed while thread" ne doit apparaître.
