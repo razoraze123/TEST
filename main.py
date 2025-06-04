@@ -141,6 +141,10 @@ class MainWindow(QMainWindow):
 
     def _update_progress(self, worker, value):
         self._target_progress = value
+        if value >= 100:
+            self.label_time.setText("Terminé !")
+        elif self.label_time.text() == "Terminé !":
+            self.label_time.setText("")
 
     def _tick_progress(self):
         if self._current_progress < self._target_progress:
@@ -175,7 +179,8 @@ class MainWindow(QMainWindow):
                 self._fade_anim.setEndValue(1.0)
                 self._fade_anim.start()
         else:
-            self.label_time.setText("")
+            if self.progress_bar.value() < 100:
+                self.label_time.setText("")
 
     # --- UI construction -------------------------------------------------
     def _setup_ui(self):
