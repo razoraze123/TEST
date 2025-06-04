@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
         self._fade_anim.setDuration(300)
 
         self._redirect_console()
+        self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console)
 
     def _redirect_console(self):
         self.console_output = ConsoleOutput()
@@ -243,7 +244,6 @@ class MainWindow(QMainWindow):
         self.btn_images.clicked.connect(lambda: self._show_page(self.page_image, self.progress_bar_img, self.label_time_img, self.console_img))
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
-        self._show_page(self.page_scraper, self.progress_bar, self.label_time, self.console)
 
         # Dark theme
         self.setStyleSheet(
