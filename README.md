@@ -32,6 +32,21 @@ This starts the PySide6 interface for scraping WooCommerce products.
 
 Use the "Mode sans t\u00eate (headless)" checkbox in the settings page to run Chrome without opening a visible window.
 
+## Image Optimization Tools
+The project includes an optional image optimizer. Before using this feature,
+download `optipng.exe` and `cwebp.exe` and place them inside the
+`tools/optimizers/` directory at the root of the repository:
+
+```
+tools/
+  optimizers/
+    optipng.exe
+    cwebp.exe
+```
+
+These executables are required for PNG and WebP optimization. If they are
+missing, the optimizer will skip the corresponding formats.
+
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
 
