@@ -65,8 +65,13 @@ class Worker(QThread):
         self._running = True
         self.start_time = None
 
+    class _StopException(Exception):
+        pass
+
     def _report(self, value):
         self.progress.emit(value)
+        if self.isInterruptionRequested():
+            raise Worker._StopException()
 
     def stop(self):
         """Request the worker to stop."""
@@ -78,7 +83,10 @@ class Worker(QThread):
         self.start_time = QTime.currentTime()
         res = None
         try:
-            res = self.func(self._report, *self.args, **self.kwargs)
+            res = self.func(self._report, lambda: self.isInterruptionRequested(), *self.args, **self.kwargs)
+        except Worker._StopException:
+            self.status.emit("interrupted")
+            res = None
         finally:
             self.status.emit("done")
             self.result.emit(res)
@@ -376,6 +384,9 @@ class MainWindow(QMainWindow):
         self.btn_start = QPushButton("Lancer l'ex\u00e9cution")
         self.btn_start.clicked.connect(self._on_start_scraper)
         layout.addWidget(self.btn_start)
+        self.btn_stop = QPushButton("Arrêter")
+        self.btn_stop.clicked.connect(self._stop_current_worker)
+        layout.addWidget(self.btn_stop)
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
@@ -433,6 +444,9 @@ class MainWindow(QMainWindow):
         self.btn_start_images = QPushButton("Lancer scraping images")
         self.btn_start_images.clicked.connect(self._on_start_images)
         layout.addWidget(self.btn_start_images)
+        self.btn_stop_images = QPushButton("Arrêter")
+        self.btn_stop_images.clicked.connect(self._stop_current_worker)
+        layout.addWidget(self.btn_stop_images)
 
         self.progress_bar_img = QProgressBar()
         self.progress_bar_img.setRange(0, 100)
@@ -466,6 +480,9 @@ class MainWindow(QMainWindow):
         self.btn_activate_flask = QPushButton("Activer Flask")
         self.btn_activate_flask.clicked.connect(self._on_activate_flask)
         layout.addWidget(self.btn_activate_flask)
+        self.btn_stop_api = QPushButton("Arrêter")
+        self.btn_stop_api.clicked.connect(self._stop_current_worker)
+        layout.addWidget(self.btn_stop_api)
 
         batch_layout = QHBoxLayout()
         batch_layout.addWidget(QLabel("Batch"))
@@ -521,6 +538,10 @@ class MainWindow(QMainWindow):
 
         return page
 
+    def _stop_current_worker(self):
+        if self.current_worker:
+            self.current_worker.stop()
+
     # --- Logic ----------------------------------------------------------
     def _on_start_scraper(self):
         start_id = self.input_start.text().strip().upper()
@@ -546,7 +567,7 @@ class MainWindow(QMainWindow):
         driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
         binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
 
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             self.scraper.prepare_results_dir(base, name)
             id_url_map = self.scraper.charger_liens_avec_id(liens_file)
             id_url_map.update(self.extra_links)
@@ -569,18 +590,21 @@ class MainWindow(QMainWindow):
 
             if 'variantes' in sections:
                 ok, err = self.scraper.scrap_produits_par_ids(
-                    id_url_map, ids_selectionnes, driver_path, binary_path, progress_callback=scaled_progress)
+                    id_url_map, ids_selectionnes, driver_path, binary_path,
+                    progress_callback=scaled_progress, should_stop=should_stop)
                 summary.append(f"Variantes: {ok} OK, {err} erreurs")
                 done += 1
 
             if 'concurrents' in sections:
                 ok, err = self.scraper.scrap_fiches_concurrents(
-                    id_url_map, ids_selectionnes, driver_path, binary_path, progress_callback=scaled_progress)
+                    id_url_map, ids_selectionnes, driver_path, binary_path,
+                    progress_callback=scaled_progress, should_stop=should_stop)
                 summary.append(f"Concurrents: {ok} OK, {err} erreurs")
                 done += 1
 
             if 'json' in sections:
-                self.scraper.export_fiches_concurrents_json(self.spin_json_batch.value(), progress_callback=scaled_progress)
+                self.scraper.export_fiches_concurrents_json(
+                    self.spin_json_batch.value(), progress_callback=scaled_progress, should_stop=should_stop)
                 summary.append("Export JSON terminé")
                 done += 1
 
@@ -593,7 +617,7 @@ class MainWindow(QMainWindow):
         folder = self.input_fiche_folder.text() or self.scraper.save_directory
         batch = self.spin_batch.value()
 
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             self.scraper.run_flask_server(folder, batch)
 
         self._run_async(task)
@@ -601,7 +625,7 @@ class MainWindow(QMainWindow):
     def _on_upload_fiche(self):
         folder = self.input_fiche_folder.text()
 
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             if not folder:
                 print("Aucun dossier de fiches défini.")
                 return
@@ -613,7 +637,7 @@ class MainWindow(QMainWindow):
         self._run_async(task)
 
     def _on_list_fiches(self):
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             self.scraper.list_fiches()
 
         self._run_async(task)
@@ -707,7 +731,7 @@ class MainWindow(QMainWindow):
                 item = QListWidgetItem(QIcon(path), os.path.basename(path))
                 self.preview_list.addItem(item)
 
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             return self.scraper.scrap_images(
                 urls,
                 dest,
@@ -715,6 +739,7 @@ class MainWindow(QMainWindow):
                 binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
                 progress_callback=progress_callback,
                 preview_callback=preview,
+                should_stop=should_stop,
             )
 
         self._run_async(task)
@@ -733,7 +758,7 @@ class MainWindow(QMainWindow):
                 item = QListWidgetItem(QIcon(path), os.path.basename(path))
                 self.preview_list.addItem(item)
 
-        def task(progress_callback):
+        def task(progress_callback, should_stop):
             return self.scraper.scrap_images(
                 [url],
                 dest,
@@ -741,6 +766,7 @@ class MainWindow(QMainWindow):
                 binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
                 progress_callback=progress_callback,
                 preview_callback=preview,
+                should_stop=should_stop,
             )
 
         self._run_async(task)
