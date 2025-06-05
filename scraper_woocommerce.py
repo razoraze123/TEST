@@ -13,6 +13,8 @@ import asyncio
 import logging
 from logging import getLogger
 from playwright.async_api import async_playwright
+import hashlib
+from PySide6.QtGui import QImage
 import config
 import logger_setup  # noqa: F401  # configure logging
 import storage
@@ -955,6 +957,11 @@ class ScraperCore:
         preview_callback=None,
         should_stop=lambda: False,
         headless=True,
+        collect_only=False,
+        min_width=0,
+        min_height=0,
+        min_ratio=0.0,
+        file_type="",
     ):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
@@ -985,6 +992,22 @@ class ScraperCore:
         os.makedirs(dest_folder, exist_ok=True)
         failed = []
         total = len(urls)
+        def file_hash(path):
+            h = hashlib.sha256()
+            with open(path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    h.update(chunk)
+            return h.hexdigest()
+
+        existing_hashes = set()
+        if not collect_only:
+            for root, _, files in os.walk(dest_folder):
+                for f in files:
+                    fp = os.path.join(root, f)
+                    try:
+                        existing_hashes.add(file_hash(fp))
+                    except Exception:
+                        pass
         for idx, url in enumerate(urls, start=1):
             if should_stop():
                 self._log("⏹ Interruption demandée.")
@@ -1024,12 +1047,38 @@ class ScraperCore:
                         temp_path = os.path.join(folder, f"temp_{i}.webp")
                         urllib.request.urlretrieve(src, temp_path)
 
+                        qimg = QImage(temp_path)
+                        w, h = qimg.width(), qimg.height()
+                        if (min_width and w < min_width) or (min_height and h < min_height):
+                            os.remove(temp_path)
+                            continue
+                        if min_ratio and h and (w / h) < min_ratio:
+                            os.remove(temp_path)
+                            continue
+                        ext = os.path.splitext(urlparse(src).path)[1].lower().lstrip(".")
+                        if file_type and ext != file_type.lower():
+                            os.remove(temp_path)
+                            continue
+
                         name = os.path.splitext(os.path.basename(urlparse(src).path))[0]
                         name = re.sub(r"-\d{3,4}", "", name)
                         name = re.sub(r"[-]+", "-", name).strip("-")
                         alt_text = f"{name.replace('-', ' ')} – {suffix}"
                         filename = self.clean_filename(alt_text) + ".webp"
                         final_path = os.path.join(folder, filename)
+
+                        if collect_only:
+                            if preview_callback:
+                                preview_callback(temp_path, final_path)
+                            continue
+
+                        file_h = file_hash(temp_path)
+                        if file_h in existing_hashes:
+                            os.remove(temp_path)
+                            self._log(f"   ↳ Doublon ignoré → {filename}")
+                            continue
+                        existing_hashes.add(file_h)
+
                         if os.path.exists(final_path):
                             os.remove(final_path)
                         os.rename(temp_path, final_path)
@@ -1037,7 +1086,7 @@ class ScraperCore:
                         self._log(f"   ✅ Image {i+1} → {filename}")
                         self._log(f"      ↪️ Texte ALT : {alt_text}")
                         if preview_callback:
-                            preview_callback(final_path)
+                            preview_callback(final_path, None)
                         time.sleep(random.uniform(1, 2))
                     except Exception as img_err:
                         self._log(f"   ❌ Échec de téléchargement pour image {i+1} : {img_err}")

@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import hashlib
 from collections import deque
 
 from PySide6.QtCore import (
@@ -25,6 +26,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSpinBox,
+    QDoubleSpinBox,
+    QComboBox,
     QStackedLayout,
     QProgressBar,
     QTextEdit,
@@ -490,6 +493,40 @@ class MainWindow(QMainWindow):
         self.cb_preview_images = QCheckBox("Afficher aperçu images")
         layout.addWidget(self.cb_preview_images)
 
+        # Filtering controls ---------------------------------------
+        size_layout = QHBoxLayout()
+        self.cb_filter_size = QCheckBox("Taille >=")
+        self.spin_min_w = QSpinBox()
+        self.spin_min_w.setRange(0, 5000)
+        self.spin_min_w.setValue(0)
+        self.spin_min_h = QSpinBox()
+        self.spin_min_h.setRange(0, 5000)
+        self.spin_min_h.setValue(0)
+        size_layout.addWidget(self.cb_filter_size)
+        size_layout.addWidget(self.spin_min_w)
+        size_layout.addWidget(QLabel("x"))
+        size_layout.addWidget(self.spin_min_h)
+        layout.addLayout(size_layout)
+
+        ratio_layout = QHBoxLayout()
+        self.cb_filter_ratio = QCheckBox("Ratio >=")
+        self.spin_ratio = QDoubleSpinBox()
+        self.spin_ratio.setDecimals(2)
+        self.spin_ratio.setRange(0.1, 10.0)
+        self.spin_ratio.setSingleStep(0.1)
+        self.spin_ratio.setValue(1.0)
+        ratio_layout.addWidget(self.cb_filter_ratio)
+        ratio_layout.addWidget(self.spin_ratio)
+        layout.addLayout(ratio_layout)
+
+        type_layout = QHBoxLayout()
+        self.cb_filter_type = QCheckBox("Type")
+        self.combo_type = QComboBox()
+        self.combo_type.addItems(["png", "jpg", "jpeg", "webp"])
+        type_layout.addWidget(self.cb_filter_type)
+        type_layout.addWidget(self.combo_type)
+        layout.addLayout(type_layout)
+
         self.btn_start_images = QPushButton("Lancer scraping images")
         self.btn_start_images.clicked.connect(self._on_start_images)
         layout.addWidget(self.btn_start_images)
@@ -521,7 +558,12 @@ class MainWindow(QMainWindow):
         self.preview_list = QListWidget()
         self.preview_list.setViewMode(QListWidget.IconMode)
         self.preview_list.setIconSize(QSize(80, 80))
+        self.preview_list.setSelectionMode(QListWidget.NoSelection)
         layout.addWidget(self.preview_list)
+
+        btn_save = QPushButton("Enregistrer la sélection")
+        btn_save.clicked.connect(self._save_selected_images)
+        layout.addWidget(btn_save)
 
         return page
 
@@ -909,11 +951,21 @@ class MainWindow(QMainWindow):
         show_preview = self.cb_preview_images.isChecked()
         headless = self.cb_headless.isChecked()
         self.preview_list.clear()
+        self.pending_images = []
 
-        def preview(path):
+        min_w = self.spin_min_w.value() if self.cb_filter_size.isChecked() else 0
+        min_h = self.spin_min_h.value() if self.cb_filter_size.isChecked() else 0
+        ratio = self.spin_ratio.value() if self.cb_filter_ratio.isChecked() else 0.0
+        ftype = self.combo_type.currentText() if self.cb_filter_type.isChecked() else ""
+
+        def preview(temp_path, final_path):
             if show_preview:
-                item = QListWidgetItem(QIcon(path), os.path.basename(path))
+                item = QListWidgetItem(QIcon(temp_path), os.path.basename(final_path))
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(Qt.Checked)
+                item.setData(Qt.UserRole, (temp_path, final_path))
                 self.preview_list.addItem(item)
+                self.pending_images.append((temp_path, final_path))
 
         def task(progress_callback, should_stop):
             return self.scraper.scrap_images(
@@ -925,6 +977,11 @@ class MainWindow(QMainWindow):
                 preview_callback=preview,
                 should_stop=should_stop,
                 headless=headless,
+                collect_only=show_preview,
+                min_width=min_w,
+                min_height=min_h,
+                min_ratio=ratio,
+                file_type=ftype,
             )
 
         self._run_async(self.images_tab, task, console_output=self.console_output_images)
@@ -938,11 +995,21 @@ class MainWindow(QMainWindow):
         show_preview = self.cb_preview_images.isChecked()
         headless = self.cb_headless.isChecked()
         self.preview_list.clear()
+        self.pending_images = []
 
-        def preview(path):
+        min_w = self.spin_min_w.value() if self.cb_filter_size.isChecked() else 0
+        min_h = self.spin_min_h.value() if self.cb_filter_size.isChecked() else 0
+        ratio = self.spin_ratio.value() if self.cb_filter_ratio.isChecked() else 0.0
+        ftype = self.combo_type.currentText() if self.cb_filter_type.isChecked() else ""
+
+        def preview(temp_path, final_path):
             if show_preview:
-                item = QListWidgetItem(QIcon(path), os.path.basename(path))
+                item = QListWidgetItem(QIcon(temp_path), os.path.basename(final_path))
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable)
+                item.setCheckState(Qt.Checked)
+                item.setData(Qt.UserRole, (temp_path, final_path))
                 self.preview_list.addItem(item)
+                self.pending_images.append((temp_path, final_path))
 
         def task(progress_callback, should_stop):
             return self.scraper.scrap_images(
@@ -954,9 +1021,55 @@ class MainWindow(QMainWindow):
                 preview_callback=preview,
                 should_stop=should_stop,
                 headless=headless,
+                collect_only=show_preview,
+                min_width=min_w,
+                min_height=min_h,
+                min_ratio=ratio,
+                file_type=ftype,
             )
 
         self._run_async(self.images_tab, task, console_output=self.console_output_images)
+
+    def _save_selected_images(self):
+        if not getattr(self, "pending_images", None):
+            return
+        dest_hashes = set()
+
+        def file_hash(path):
+            h = hashlib.sha256()
+            with open(path, 'rb') as f:
+                for chunk in iter(lambda: f.read(8192), b''):
+                    h.update(chunk)
+            return h.hexdigest()
+
+        for root, _, files in os.walk(self.input_img_folder.text() or os.path.join(self.scraper.base_dir, "images")):
+            for f in files:
+                fp = os.path.join(root, f)
+                try:
+                    dest_hashes.add(file_hash(fp))
+                except Exception:
+                    pass
+
+        for i in range(self.preview_list.count()):
+            item = self.preview_list.item(i)
+            temp_path, final_path = item.data(Qt.UserRole)
+            if item.checkState() != Qt.Checked:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                continue
+            h = file_hash(temp_path)
+            if h in dest_hashes:
+                os.remove(temp_path)
+                continue
+            dest_hashes.add(h)
+            os.makedirs(os.path.dirname(final_path), exist_ok=True)
+            if os.path.exists(final_path):
+                os.remove(final_path)
+            os.rename(temp_path, final_path)
+
+        QMessageBox.information(self, "Images", "Images sauvegardées")
+        self.preview_list.clear()
+        self.pending_images = []
 
     def _on_start_optimizer(self):
         folder = self.input_opt_folder.text().strip()
