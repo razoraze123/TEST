@@ -69,6 +69,12 @@ class ScraperCore:
         safe = safe.replace(" ", "-").lower()
         return safe
 
+    @staticmethod
+    def slugify(text):
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+        text = re.sub(r"[^\w\s-]", "", text.lower())
+        return re.sub(r"[-\s]+", "-", text).strip("-")
+
     def charger_liens_avec_id(self, path=None):
         path = path or self.liens_id_txt
         id_url_map = {}
@@ -1114,6 +1120,102 @@ class ScraperCore:
         if progress_callback:
             progress_callback(100)
         return "Scraping images terminé"
+
+    def scrap_images_variantes(
+        self,
+        items,
+        domain,
+        upload_path,
+        name_pattern,
+        progress_callback=None,
+        should_stop=lambda: False,
+        headless=True,
+    ):
+        driver_path = self.chrome_driver_path
+        binary_path = self.chrome_binary_path
+        if not driver_path:
+            try:
+                driver_path = ChromeDriverManager().install()
+            except Exception as e:
+                self._log(f"❌ Impossible de télécharger ChromeDriver : {e}")
+                self._log("➡️ Spécifiez CHROME_DRIVER_PATH pour un mode hors-ligne.")
+                return pd.DataFrame()
+        progress_callback = progress_callback or self._update_progress
+
+        options = webdriver.ChromeOptions()
+        if binary_path:
+            options.binary_location = binary_path
+        options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        if headless:
+            options.add_argument("--headless")
+        service = Service(executable_path=driver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.execute_cdp_cmd(
+            "Page.addScriptToEvaluateOnNewDocument",
+            {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+        )
+
+        rows = []
+        mapping = {}
+        total = len(items)
+        for idx, prod in enumerate(items, start=1):
+            if should_stop():
+                progress_callback(100)
+                break
+            prod_id = prod.get("id")
+            url = prod.get("url")
+            try:
+                driver.get(url)
+                time.sleep(random.uniform(2.5, 3.5))
+
+                labels = driver.find_elements(By.CSS_SELECTOR, "label.color-swatch")
+                visible_labels = [l for l in labels if l.is_displayed()]
+                for label in visible_labels:
+                    try:
+                        variant_name = label.find_element(By.CSS_SELECTOR, "span.sr-only").text.strip()
+                    except Exception:
+                        continue
+                    label.click()
+                    time.sleep(1)
+                    images = driver.find_elements(By.CSS_SELECTOR, ".product-gallery__media img")
+                    for img in images:
+                        src = img.get_attribute("src")
+                        if not src:
+                            continue
+                        base = os.path.splitext(os.path.basename(urlparse(src).path))[0]
+                        filename = self.slugify(name_pattern.format(
+                            id=prod_id,
+                            variant=variant_name,
+                            name=base,
+                        )) + ".webp"
+                        link = f"{domain}/{upload_path}/{filename}"
+                        rows.append({
+                            "id produit": prod_id,
+                            "variante": variant_name,
+                            "url concurrent": src,
+                            "nom image": filename,
+                            "lien wordpress": link,
+                        })
+                        mapping.setdefault(prod_id, {}).setdefault(variant_name, []).append(filename)
+            except Exception as e:
+                self._log(f"❌ Erreur sur {url} → {e}")
+            if progress_callback:
+                progress_callback(int(idx / total * 100))
+
+        driver.quit()
+
+        if mapping:
+            mapping_path = os.path.join(self.results_dir or self.base_dir, "mapping_images_variantes.json")
+            try:
+                with open(mapping_path, "w", encoding="utf-8") as f:
+                    json.dump(mapping, f, ensure_ascii=False, indent=2)
+            except Exception as e:
+                self._log(f"Erreur sauvegarde mapping: {e}")
+
+        progress_callback(100)
+        return pd.DataFrame(rows)
 
     # === SERVER INTERACTION ===
     def run_flask_server(self, fiche_folder, batch_size=15):
