@@ -2,7 +2,7 @@
 
 ## Requirements
 - Python 3.10 or newer.
-- Google Chrome. The ChromeDriver binary is downloaded automatically at runtime if `CHROME_DRIVER_PATH` is not provided.
+- Google Chrome. The ChromeDriver binary is downloaded automatically at runtime if `CHROME_DRIVER_PATH` is empty.
 
 Install the Python dependencies using:
 
@@ -18,8 +18,23 @@ python Application.py
 ```
 
 ## Configuring Paths
-Paths are read from environment variables so you can customise them without
-modifying the source. The defaults are defined in `config.py`:
+Paths are stored in a `config.toml` file located at the repository root. If the
+file does not exist, default values from `config_manager.py` are used. The file
+contains entries such as:
+
+```toml
+BASE_DIR = "/path/to/project"
+CHROME_DRIVER_PATH = "/path/to/chromedriver"
+CHROME_BINARY_PATH = "/path/to/chrome"
+SUFFIX_FILE_PATH = "/path/to/custom_suffixes.py"
+LINKS_FILE_PATH = "/path/to/liens_clean.txt"
+OPTIPNG_PATH = "tools/optimizers/optipng.exe"
+CWEBP_PATH = "tools/optimizers/cwebp.exe"
+ROOT_FOLDER = "image"
+```
+
+You can edit this file directly or use the **Settings** page in the GUI which
+updates it automatically. The defaults mirror the previous behaviour:
 
 * `BASE_DIR` – directory used to store generated files. Defaults to the folder
   containing `config.py`.
@@ -33,21 +48,8 @@ modifying the source. The defaults are defined in `config.py`:
 
 A minimal template file `custom_suffixes.example.py` is included in the
 repository. Copy it to `custom_suffixes.py` and edit it to provide your own
-suffixes.
-
-Set the environment variables to override these locations when running the
-scripts.
-
-Example on Linux/macOS:
-
-```bash
-export BASE_DIR=/path/to/project
-export CHROME_DRIVER_PATH=/path/to/chromedriver  # only if you want to skip auto download
-export CHROME_BINARY_PATH=/path/to/chrome
-```
-
-If `CHROME_DRIVER_PATH` is not set, a driver is downloaded automatically at
-runtime. Other variables fall back to the values defined in `config.py`.
+suffixes. If `CHROME_DRIVER_PATH` is empty, a driver is downloaded
+automatically at runtime.
 
 ## Running the Application
 `Application.py` is the unique entry point aggregating the GUI, scraping and optimizer features. Launch the GUI with:

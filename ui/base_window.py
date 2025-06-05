@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
 import config
+import config_manager
 
 
 class ConsoleOutput(QObject):
@@ -215,8 +216,7 @@ class MainWindow(QMainWindow):
         self._threads = []
         self.extra_links = {}
         self._setup_ui()
-        self._load_optimizer_paths()
-
+        
         self._redirect_console()
         self._show_page(self.page_scraper)
 
@@ -634,6 +634,7 @@ class MainWindow(QMainWindow):
         )
         btn_driver = QPushButton("Parcourir")
         btn_driver.clicked.connect(self._choose_driver_path)
+        self.input_driver_path.editingFinished.connect(self._save_config)
         driver_layout.addWidget(self.input_driver_path)
         driver_layout.addWidget(btn_driver)
         layout.addLayout(driver_layout)
@@ -646,6 +647,7 @@ class MainWindow(QMainWindow):
         )
         btn_binary = QPushButton("Parcourir")
         btn_binary.clicked.connect(self._choose_binary_path)
+        self.input_binary_path.editingFinished.connect(self._save_config)
         binary_layout.addWidget(self.input_binary_path)
         binary_layout.addWidget(btn_binary)
         layout.addLayout(binary_layout)
@@ -655,6 +657,7 @@ class MainWindow(QMainWindow):
         self.input_optipng_path = QLineEdit(config.OPTIPNG_PATH)
         btn_optipng = QPushButton("Parcourir…")
         btn_optipng.clicked.connect(self._choose_optipng_path)
+        self.input_optipng_path.editingFinished.connect(self._save_config)
         optipng_layout.addWidget(self.input_optipng_path)
         optipng_layout.addWidget(btn_optipng)
         layout.addLayout(optipng_layout)
@@ -664,6 +667,7 @@ class MainWindow(QMainWindow):
         self.input_cwebp_path = QLineEdit(config.CWEBP_PATH)
         btn_cwebp = QPushButton("Parcourir…")
         btn_cwebp.clicked.connect(self._choose_cwebp_path)
+        self.input_cwebp_path.editingFinished.connect(self._save_config)
         cwebp_layout.addWidget(self.input_cwebp_path)
         cwebp_layout.addWidget(btn_cwebp)
         layout.addLayout(cwebp_layout)
@@ -805,23 +809,25 @@ class MainWindow(QMainWindow):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir chromedriver")
         if path:
             self.input_driver_path.setText(path)
+            self._save_config()
 
     def _choose_binary_path(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir le binaire Chrome")
         if path:
             self.input_binary_path.setText(path)
+            self._save_config()
 
     def _choose_optipng_path(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir optipng")
         if path:
             self.input_optipng_path.setText(path)
-            self._save_optimizer_paths()
+            self._save_config()
 
     def _choose_cwebp_path(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir cwebp")
         if path:
             self.input_cwebp_path.setText(path)
-            self._save_optimizer_paths()
+            self._save_config()
 
     def _create_folder(self):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
@@ -886,28 +892,16 @@ class MainWindow(QMainWindow):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.console_optimizer.toPlainText())
 
-    def _save_optimizer_paths(self):
-        data = {
-            "optipng": self.input_optipng_path.text(),
-            "cwebp": self.input_cwebp_path.text(),
-        }
-        try:
-            with open(os.path.join(os.path.dirname(__file__), "optimizer_paths.json"), "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2)
-        except Exception as e:
-            print(f"Erreur sauvegarde chemins optimizers: {e}")
-
-    def _load_optimizer_paths(self):
-        path = os.path.join(os.path.dirname(__file__), "optimizer_paths.json")
-        if os.path.isfile(path):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                self.input_optipng_path.setText(data.get("optipng", self.input_optipng_path.text()))
-                self.input_cwebp_path.setText(data.get("cwebp", self.input_cwebp_path.text()))
-            except Exception as e:
-                print(f"Erreur chargement chemins optimizers: {e}")
-
+    def _save_config(self):
+        data = config_manager.load()
+        data.update({
+            "CHROME_DRIVER_PATH": self.input_driver_path.text().strip() or None,
+            "CHROME_BINARY_PATH": self.input_binary_path.text().strip() or None,
+            "OPTIPNG_PATH": self.input_optipng_path.text().strip() or config.OPTIPNG_PATH,
+            "CWEBP_PATH": self.input_cwebp_path.text().strip() or config.CWEBP_PATH,
+        })
+        config_manager.save(data)
+        config.reload()
     def _on_start_images(self):
         dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
         links_file = self.input_img_links.text().strip() or self.scraper.liens_id_txt
@@ -972,7 +966,7 @@ class MainWindow(QMainWindow):
 
         optipng = self.input_optipng_path.text().strip() or config.OPTIPNG_PATH
         cwebp = self.input_cwebp_path.text().strip() or config.CWEBP_PATH
-        self._save_optimizer_paths()
+        self._save_config()
 
         missing = []
         if not os.path.isfile(optipng):
