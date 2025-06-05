@@ -13,10 +13,25 @@ from PySide6.QtWidgets import (
 from ui.components import Sidebar, RoundButton, Card
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
+from pathlib import Path
+import tomllib
+from ui import style
 
 from ui.base_window import MainWindow
 from ui.style import apply_theme
 from ui.responsive import ResponsiveMixin
+
+
+def _get_project_info():
+    """Return application name and version from pyproject.toml."""
+    path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    try:
+        with open(path, "rb") as f:
+            data = tomllib.load(f)
+        proj = data.get("project", {})
+        return proj.get("name", "Application"), proj.get("version", "")
+    except Exception:
+        return "Application", ""
 
 
 class DashboardWindow(ResponsiveMixin, MainWindow):
@@ -102,6 +117,22 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.stack.addWidget(p)
 
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
+
+        # Footer -------------------------------------------------------
+        name, version = _get_project_info()
+        footer = QFrame()
+        footer_layout = QHBoxLayout(footer)
+        footer_layout.setContentsMargins(10, 4, 10, 4)
+        footer_layout.setSpacing(0)
+        footer_label = QLabel(f"{name} v{version}")
+        footer_label.setAlignment(Qt.AlignCenter)
+        footer_layout.addStretch(1)
+        footer_layout.addWidget(footer_label)
+        footer_layout.addStretch(1)
+        footer.setStyleSheet(
+            f"background-color: {style.SURFACE_DARK}; color: {style.TEXT_LIGHT}; font-size: 12px;"
+        )
+        main_layout.addWidget(footer)
 
         # Apply centralized theme
         apply_theme(self)
