@@ -626,22 +626,26 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(page)
         layout.setAlignment(Qt.AlignTop)
 
+        self.cb_manual_chrome = QCheckBox("Mode manuel pour Chrome")
+        self.cb_manual_chrome.stateChanged.connect(self._toggle_chrome_manual)
+        layout.addWidget(self.cb_manual_chrome)
+
         layout.addWidget(QLabel("Chemin du chromedriver"))
         driver_layout = QHBoxLayout()
         self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH)
-        btn_driver = QPushButton("Parcourir")
-        btn_driver.clicked.connect(self._choose_driver_path)
+        self.btn_driver = QPushButton("Parcourir")
+        self.btn_driver.clicked.connect(self._choose_driver_path)
         driver_layout.addWidget(self.input_driver_path)
-        driver_layout.addWidget(btn_driver)
+        driver_layout.addWidget(self.btn_driver)
         layout.addLayout(driver_layout)
 
         layout.addWidget(QLabel("Chemin du navigateur Chrome"))
         binary_layout = QHBoxLayout()
         self.input_binary_path = QLineEdit(config.CHROME_BINARY_PATH)
-        btn_binary = QPushButton("Parcourir")
-        btn_binary.clicked.connect(self._choose_binary_path)
+        self.btn_binary = QPushButton("Parcourir")
+        self.btn_binary.clicked.connect(self._choose_binary_path)
         binary_layout.addWidget(self.input_binary_path)
-        binary_layout.addWidget(btn_binary)
+        binary_layout.addWidget(self.btn_binary)
         layout.addLayout(binary_layout)
 
         layout.addWidget(QLabel("Chemin d'optipng.exe"))
@@ -665,6 +669,8 @@ class MainWindow(QMainWindow):
         self.cb_headless = QCheckBox("Mode sans tête (headless)")
         self.cb_headless.setChecked(True)
         layout.addWidget(self.cb_headless)
+
+        self._toggle_chrome_manual(self.cb_manual_chrome.checkState())
 
         return page
 
@@ -699,8 +705,8 @@ class MainWindow(QMainWindow):
         name = self.input_folder_name.text().strip() or "results"
         base = parent
 
-        driver_path = self.input_driver_path.text() or config.CHROME_DRIVER_PATH
-        binary_path = self.input_binary_path.text() or config.CHROME_BINARY_PATH
+        driver_path = self.input_driver_path.text().strip() or None
+        binary_path = self.input_binary_path.text().strip() or None
         headless = self.cb_headless.isChecked()
 
         def task(progress_callback, should_stop):
@@ -817,6 +823,16 @@ class MainWindow(QMainWindow):
             self.input_cwebp_path.setText(path)
             self._save_optimizer_paths()
 
+    def _toggle_chrome_manual(self, state):
+        manual = state == Qt.Checked
+        for w in (
+            self.input_driver_path,
+            self.btn_driver,
+            self.input_binary_path,
+            self.btn_binary,
+        ):
+            w.setEnabled(manual)
+
     def _create_folder(self):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
         if ok and name:
@@ -919,8 +935,8 @@ class MainWindow(QMainWindow):
             return self.scraper.scrap_images(
                 urls,
                 dest,
-                driver_path=self.input_driver_path.text() or config.CHROME_DRIVER_PATH,
-                binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
+                driver_path=self.input_driver_path.text().strip() or None,
+                binary_path=self.input_binary_path.text().strip() or None,
                 progress_callback=progress_callback,
                 preview_callback=preview,
                 should_stop=should_stop,
@@ -948,8 +964,8 @@ class MainWindow(QMainWindow):
             return self.scraper.scrap_images(
                 [url],
                 dest,
-                driver_path=self.input_driver_path.text() or config.CHROME_DRIVER_PATH,
-                binary_path=self.input_binary_path.text() or config.CHROME_BINARY_PATH,
+                driver_path=self.input_driver_path.text().strip() or None,
+                binary_path=self.input_binary_path.text().strip() or None,
                 progress_callback=progress_callback,
                 preview_callback=preview,
                 should_stop=should_stop,
