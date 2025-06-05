@@ -77,3 +77,6 @@ python flask_server.py
 ```
 
 The server listens on port `5000` by default.
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
