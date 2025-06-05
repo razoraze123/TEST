@@ -11,15 +11,26 @@ pip install -r requirements.txt
 ```
 
 ## Configuring Paths
-Edit `config.py` and update the following variables so that they point to your local installation:
+Paths are read from environment variables so you can customise them without
+modifying the source. Set the following variables before running the scripts
+(or adjust the defaults in `config.py`):
 
-```python
-BASE_DIR = r"C:\\path\\to\\project"
-CHROME_DRIVER_PATH = os.path.join(BASE_DIR, r"path/to/chromedriver.exe")
-CHROME_BINARY_PATH = os.path.join(BASE_DIR, r"path/to/chrome.exe")
+* `BASE_DIR` – directory used to store generated files
+* `CHROME_DRIVER_PATH` – path to your `chromedriver` executable
+* `CHROME_BINARY_PATH` – path to the Chrome binary
+* `SUFFIX_FILE_PATH` – file containing custom suffixes for `scraper_images.py`
+* `LINKS_FILE_PATH` – text file listing product URLs
+
+Example on Linux/macOS:
+
+```bash
+export BASE_DIR=/path/to/project
+export CHROME_DRIVER_PATH=/path/to/chromedriver
+export CHROME_BINARY_PATH=/path/to/chrome
 ```
 
-`BASE_DIR` defines where scraped data and output files will be stored. The paths for `CHROME_DRIVER_PATH` and `CHROME_BINARY_PATH` must correspond to your Chrome driver and Chrome executable.
+If these variables are not set, reasonable defaults defined in `config.py` are
+used.
 
 ## Running the Application
 Launch the GUI application with:

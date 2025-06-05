@@ -10,10 +10,11 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import importlib.util
+import config
 
 # === CONFIGURATION ===
-CHROMEDRIVER_PATH = r"C:\WebDriver\bin\chromedriver.exe"
-ROOT_FOLDER = "image"
+CHROMEDRIVER_PATH = config.CHROME_DRIVER_PATH
+ROOT_FOLDER = config.ROOT_FOLDER
 os.makedirs(ROOT_FOLDER, exist_ok=True)
 
 # === IMPORT DES SUFFIXES PERSONNALISÉS ===
@@ -23,7 +24,7 @@ def import_custom_suffixes(path):
     spec.loader.exec_module(module)
     return module.custom_suffixes
 
-suffix_file_path = r"C:\Users\Lamine\Desktop\woocommerce\code\custom_suffixes.py"
+suffix_file_path = config.SUFFIX_FILE_PATH
 custom_suffixes = import_custom_suffixes(suffix_file_path)
 
 # Slugifie toutes les clés du dictionnaire
@@ -41,7 +42,7 @@ def read_links_from_txt(path):
     with open(path, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip()]
 
-links_file_path = r"C:\Users\Lamine\Desktop\woocommerce\code\liens_clean.txt"
+links_file_path = config.LINKS_FILE_PATH
 product_urls = read_links_from_txt(links_file_path)
 
 # === FONCTIONS UTILES ===
