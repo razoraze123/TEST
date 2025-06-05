@@ -10,8 +10,11 @@ import requests
 import urllib.request
 from urllib.parse import urlparse
 import asyncio
+import logging
+from logging import getLogger
 from playwright.async_api import async_playwright
 import config
+import logger_setup  # noqa: F401  # configure logging
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -40,6 +43,7 @@ class ScraperCore:
 
         self.results_dir = ""
         self.json_dir = ""
+        self.checkpoint_file = os.path.join(self.base_dir, "scraping_checkpoint.json")
 
         self._progress = 0
         self._logs = []
@@ -137,8 +141,34 @@ class ScraperCore:
         self._progress = int(value)
 
     def _log(self, message):
-        self._logs.append(str(message))
-        print(message)
+        msg = str(message)
+        self._logs.append(msg)
+        logging.info(msg)
+
+    def _save_checkpoint(self, step: str, processed: list):
+        data = {"step": step, "processed": processed}
+        try:
+            with open(self.checkpoint_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logging.error("Failed to save checkpoint: %s", e)
+
+    def _load_checkpoint(self):
+        if os.path.isfile(self.checkpoint_file):
+            try:
+                with open(self.checkpoint_file, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                return data.get("step"), data.get("processed", [])
+            except Exception as e:
+                logging.error("Failed to load checkpoint: %s", e)
+        return None, []
+
+    def _clear_checkpoint(self):
+        if os.path.isfile(self.checkpoint_file):
+            try:
+                os.remove(self.checkpoint_file)
+            except Exception as e:
+                logging.error("Failed to remove checkpoint: %s", e)
 
     def get_progress(self):
         return self._progress
@@ -180,12 +210,34 @@ class ScraperCore:
         progress_callback=None,
         headless=True,
         concurrent=False,
+        resume=True,
     ):
         """Run selected scraping sections with progress aggregation."""
         progress_callback = progress_callback or self._update_progress
         total = len(sections)
         done = 0
         summary = []
+
+        processed_variantes = []
+        processed_concurrents = []
+        if resume:
+            step, processed = self._load_checkpoint()
+            if step == "variantes":
+                processed_variantes = processed
+            elif step == "concurrents":
+                processed_concurrents = processed
+                if "variantes" in sections:
+                    done += 1
+                    sections = [s for s in sections if s != "variantes"]
+            elif step == "json":
+                if "variantes" in sections:
+                    done += 1
+                if "concurrents" in sections:
+                    done += 1
+                sections = [s for s in sections if s == "json"]
+
+        ids_for_variantes = [i for i in ids_selectionnes if i not in processed_variantes]
+        ids_for_concurrents = [i for i in ids_selectionnes if i not in processed_concurrents]
 
         def scaled(p):
             overall = int(done / total * 100 + p / total)
@@ -194,9 +246,10 @@ class ScraperCore:
         if 'variantes' in sections:
             ok, err = self.scrap_produits_par_ids(
                 id_url_map,
-                ids_selectionnes,
-                driver_path,
-                binary_path,
+                ids_for_variantes,
+                processed_ids=processed_variantes,
+                driver_path=driver_path,
+                binary_path=binary_path,
                 progress_callback=scaled,
                 headless=headless,
                 concurrent=concurrent,
@@ -207,9 +260,10 @@ class ScraperCore:
         if 'concurrents' in sections:
             ok, err = self.scrap_fiches_concurrents(
                 id_url_map,
-                ids_selectionnes,
-                driver_path,
-                binary_path,
+                ids_for_concurrents,
+                processed_ids=processed_concurrents,
+                driver_path=driver_path,
+                binary_path=binary_path,
                 progress_callback=scaled,
                 headless=headless,
                 concurrent=concurrent,
@@ -230,6 +284,7 @@ class ScraperCore:
         self,
         id_url_map,
         ids_selectionnes,
+        processed_ids=None,
         driver_path=None,
         binary_path=None,
         progress_callback=None,
@@ -242,11 +297,14 @@ class ScraperCore:
                 self._scrap_produits_par_ids_async(
                     id_url_map,
                     ids_selectionnes,
+                    processed_ids or [],
                     progress_callback,
                     should_stop,
                     headless,
                 )
             )
+
+        processed_ids = set(processed_ids or [])
 
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
@@ -279,6 +337,8 @@ class ScraperCore:
         total = len(ids_selectionnes)
         self._log(f"\n🚀 Début du scraping de {total} liens...\n")
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
+            if id_produit in processed_ids:
+                continue
             if should_stop():
                 self._log("⏹ Interruption demandée.")
                 progress_callback(100)
@@ -290,6 +350,7 @@ class ScraperCore:
                 continue
 
             self._log(f"🔎 [{idx}/{len(ids_selectionnes)}] {id_produit} → {url}")
+            processed_ids.add(id_produit)
             try:
                 driver.get(url)
                 time.sleep(random.uniform(2.5, 3.5))
@@ -372,28 +433,34 @@ class ScraperCore:
 
             if progress_callback:
                 progress_callback(int(idx / total * 100))
+            self._save_checkpoint("variantes", list(processed_ids))
 
         driver.quit()
         df = pd.DataFrame(woocommerce_rows)
         df.to_excel(self.fichier_excel, index=False)
         self._log(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
+        self._save_checkpoint("concurrents", [])
         return n_ok, n_err
 
     async def _scrap_produits_par_ids_async(
         self,
         id_url_map,
         ids_selectionnes,
+        processed_ids,
         progress_callback,
         should_stop,
         headless,
     ):
         progress_callback = progress_callback or self._update_progress
+        processed_ids = set(processed_ids)
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=headless)
             tasks = {}
             for id_produit in ids_selectionnes:
                 if should_stop():
                     break
+                if id_produit in processed_ids:
+                    continue
                 url = id_url_map.get(id_produit)
                 if not url:
                     self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
@@ -414,7 +481,9 @@ class ScraperCore:
                 except Exception as e:
                     self._log(f"❌ Erreur sur {url} → {e}")
                     n_err += 1
+                processed_ids.add(id_prod)
                 progress_callback(int(idx / total * 100))
+                self._save_checkpoint("variantes", list(processed_ids))
 
             await browser.close()
 
@@ -480,6 +549,7 @@ class ScraperCore:
         df = pd.DataFrame(woocommerce_rows)
         df.to_excel(self.fichier_excel, index=False)
         self._log(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
+        self._save_checkpoint("concurrents", [])
         return n_ok, n_err
 
 # === SCRAPING FICHES CONCURRENTS ===
@@ -487,6 +557,7 @@ class ScraperCore:
         self,
         id_url_map,
         ids_selectionnes,
+        processed_ids=None,
         driver_path=None,
         binary_path=None,
         progress_callback=None,
@@ -499,11 +570,14 @@ class ScraperCore:
                 self._scrap_fiches_concurrents_async(
                     id_url_map,
                     ids_selectionnes,
+                    processed_ids or [],
                     progress_callback,
                     should_stop,
                     headless,
                 )
             )
+
+        processed_ids = set(processed_ids or [])
 
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
@@ -536,6 +610,8 @@ class ScraperCore:
         n_err = 0
         total = len(ids_selectionnes)
         for idx, id_produit in enumerate(ids_selectionnes, start=1):
+            if id_produit in processed_ids:
+                continue
             if should_stop():
                 self._log("⏹ Interruption demandée.")
                 progress_callback(100)
@@ -550,6 +626,7 @@ class ScraperCore:
             self._log(f"\n📦 {idx} / {total}")
             self._log(f"🔗 {url} — ")
 
+            processed_ids.add(id_produit)
             try:
                 driver.get(url)
                 time.sleep(random.uniform(2.5, 4.2))  # anti-bot
@@ -603,6 +680,7 @@ class ScraperCore:
 
             if progress_callback:
                 progress_callback(int(idx / total * 100))
+            self._save_checkpoint("concurrents", list(processed_ids))
 
         df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
         df.to_excel(self.recap_excel_path, index=False)
@@ -610,23 +688,28 @@ class ScraperCore:
         self._log("\n🎉 Extraction terminée. Résultats enregistrés dans :")
         self._log(f"- 📁 Fiches : {self.save_directory}")
         self._log(f"- 📊 Récapitulatif : {self.recap_excel_path}")
+        self._save_checkpoint("json", [])
         return n_ok, n_err
 
     async def _scrap_fiches_concurrents_async(
         self,
         id_url_map,
         ids_selectionnes,
+        processed_ids,
         progress_callback,
         should_stop,
         headless,
     ):
         progress_callback = progress_callback or self._update_progress
+        processed_ids = set(processed_ids)
         async with async_playwright() as p:
             browser = await p.chromium.launch(headless=headless)
             tasks = {}
             for id_produit in ids_selectionnes:
                 if should_stop():
                     break
+                if id_produit in processed_ids:
+                    continue
                 url = id_url_map.get(id_produit)
                 if not url:
                     self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
@@ -648,7 +731,9 @@ class ScraperCore:
                     self._log(f"❌ Extraction Échec — {e}")
                     results.append((id_prod, url, None))
                     n_err += 1
+                processed_ids.add(id_prod)
                 progress_callback(int(idx / total * 100))
+                self._save_checkpoint("concurrents", list(processed_ids))
 
             await browser.close()
 
@@ -696,6 +781,7 @@ class ScraperCore:
         self._log("\n🎉 Extraction terminée. Résultats enregistrés dans :")
         self._log(f"- 📁 Fiches : {self.save_directory}")
         self._log(f"- 📊 Récapitulatif : {self.recap_excel_path}")
+        self._save_checkpoint("json", [])
         return n_ok, n_err
 
 # === EXPORT JSON PAR BATCH ===
@@ -756,9 +842,10 @@ class ScraperCore:
             with open(chemin_sortie, "w", encoding="utf-8") as f_json:
                 json.dump(data_batch, f_json, ensure_ascii=False, indent=2)
 
-            self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie} ({len(batch)} produits)")
+        self._log(f"    ➡️ Batch sauvegardé : {nom_fichier_sortie} ({len(batch)} produits)")
 
         self._log(f"\n✅ Export JSON terminé : {nb_fichiers} fichier(s) généré(s) dans : {dossier_sortie}")
+        self._clear_checkpoint()
 
     # === SCRAPING IMAGES ===
     def scrap_images(

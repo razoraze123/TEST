@@ -1,4 +1,5 @@
 import sys
+import logger_setup  # noqa: F401  # configure logging
 from PySide6.QtWidgets import QApplication
 from ui.main_window import DashboardWindow
 
