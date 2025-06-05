@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QLabel,
     QLineEdit,
+    QCheckBox,
     QStackedLayout,
     QStyle,
     QFrame,
@@ -20,6 +21,8 @@ from ui import style
 from ui.base_window import MainWindow
 from ui.style import apply_theme
 from ui.responsive import ResponsiveMixin
+import config
+import config_manager
 
 
 def _get_project_info():
@@ -61,6 +64,10 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.header_layout.addWidget(self.label_welcome)
         self.header_layout.addStretch(1)
         self.header_layout.addWidget(self.edit_search)
+        self.cb_dark_theme = QCheckBox("Th\u00e8me sombre")
+        self.cb_dark_theme.setChecked(config.THEME == "dark")
+        self.cb_dark_theme.stateChanged.connect(self._toggle_theme)
+        self.header_layout.addWidget(self.cb_dark_theme)
         main_layout.addWidget(header)
 
         # Body ---------------------------------------------------------
@@ -135,7 +142,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         main_layout.addWidget(footer)
 
         # Apply centralized theme
-        apply_theme(self)
+        apply_theme(self, config.THEME)
 
     # ------------------------------------------------------------------
     def _create_dashboard_page(self):
@@ -202,3 +209,12 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.sidebar.collapse()
         else:
             self.sidebar.expand()
+
+    # ------------------------------------------------------------------
+    def _toggle_theme(self, state=None):
+        theme = "dark" if self.cb_dark_theme.isChecked() else "light"
+        apply_theme(self, theme)
+        data = config_manager.load()
+        data["THEME"] = theme
+        config_manager.save(data)
+        config.reload()

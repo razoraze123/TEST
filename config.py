@@ -15,11 +15,12 @@ CWEBP_PATH = _cfg["CWEBP_PATH"]
 SUFFIX_FILE_PATH = _cfg["SUFFIX_FILE_PATH"]
 LINKS_FILE_PATH = _cfg["LINKS_FILE_PATH"]
 ROOT_FOLDER = _cfg["ROOT_FOLDER"]
+THEME = _cfg["THEME"]
 
 
 def reload() -> Dict[str, str | None]:
     """Reload configuration from disk and update module globals."""
-    global BASE_DIR, CHROME_DRIVER_PATH, CHROME_BINARY_PATH, OPTIPNG_PATH, CWEBP_PATH, SUFFIX_FILE_PATH, LINKS_FILE_PATH, ROOT_FOLDER
+    global BASE_DIR, CHROME_DRIVER_PATH, CHROME_BINARY_PATH, OPTIPNG_PATH, CWEBP_PATH, SUFFIX_FILE_PATH, LINKS_FILE_PATH, ROOT_FOLDER, THEME
     _new = config_manager.load()
     BASE_DIR = _new["BASE_DIR"]
     CHROME_DRIVER_PATH = _new["CHROME_DRIVER_PATH"]
@@ -29,4 +30,5 @@ def reload() -> Dict[str, str | None]:
     SUFFIX_FILE_PATH = _new["SUFFIX_FILE_PATH"]
     LINKS_FILE_PATH = _new["LINKS_FILE_PATH"]
     ROOT_FOLDER = _new["ROOT_FOLDER"]
+    THEME = _new["THEME"]
     return _new
