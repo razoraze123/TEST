@@ -82,7 +82,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.sidebar.setFixedWidth(180)
         self.sidebar.setSpacing(4)
 
-        items = [
+        self.sidebar.add_section("🛒  E-commerce")
+        ecommerce_items = [
             ("Accueil", QStyle.SP_DesktopIcon),
             ("Scraper", QStyle.SP_FileIcon),
             ("Scraping d'image", QStyle.SP_DirIcon),
@@ -91,9 +92,17 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
             ("Optimiseur d'images", QStyle.SP_ComputerIcon),
             ("API Flask", QStyle.SP_BrowserReload),
+        ]
+        for text, icon in ecommerce_items:
+            it = QListWidgetItem(self.style().standardIcon(icon), text)
+            self.sidebar.addItem(it)
+
+        self.sidebar.addItem(QListWidgetItem(""))
+        self.sidebar.add_section("📒  Comptabilité")
+        accounting_items = [
             ("Paramètres", QStyle.SP_FileDialogDetailedView),
         ]
-        for text, icon in items:
+        for text, icon in accounting_items:
             it = QListWidgetItem(self.style().standardIcon(icon), text)
             self.sidebar.addItem(it)
         self.sidebar.setCurrentRow(0)
