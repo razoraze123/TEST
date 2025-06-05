@@ -1,4 +1,5 @@
 # Setup and Usage
+[![CI](https://github.com/USER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/USER/REPO/actions/workflows/ci.yml)
 
 ## Requirements
 - Python 3.10 or newer.
@@ -22,6 +23,13 @@ playwright install
 ```bash
 pip install -r requirements.txt
 python Application.py
+```
+
+### Running Tests
+
+```bash
+pip install -r requirements.txt
+pytest
 ```
 
 ### Asynchronous Scraping

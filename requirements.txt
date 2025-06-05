@@ -8,3 +8,6 @@ flask
 PySide6
 webdriver-manager
 playwright
+
+# Development
+pytest
