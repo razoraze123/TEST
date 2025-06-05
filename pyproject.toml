@@ -16,6 +16,16 @@ dependencies = [
     "playwright",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+]
+
 [project.scripts]
 woocommerce-scraper = "cli:main"
+woocommerce-scraper-gui = "Application:main"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
 
