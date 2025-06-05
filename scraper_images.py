@@ -20,10 +20,15 @@ os.makedirs(ROOT_FOLDER, exist_ok=True)
 
 # === IMPORT DES SUFFIXES PERSONNALISÉS ===
 def import_custom_suffixes(path):
-    spec = importlib.util.spec_from_file_location("custom_suffixes", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.custom_suffixes
+    try:
+        spec = importlib.util.spec_from_file_location("custom_suffixes", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.custom_suffixes
+    except FileNotFoundError:
+        print(f"⚠️ Fichier de suffixes introuvable : {path}")
+        print("➡️ Aucun suffixe personnalisé n'est chargé.")
+        return {}
 
 suffix_file_path = config.SUFFIX_FILE_PATH
 custom_suffixes = import_custom_suffixes(suffix_file_path)
