@@ -18,15 +18,24 @@ import json
 import os
 from urllib.parse import urlparse
 
-path_qwebchannel = os.path.join(
-    os.path.dirname(PySide6.__file__),
-    "Qt",
-    "resources",
-    "qtwebchannel",
-    "qwebchannel.js",
+# Try loading qwebchannel.js from the packaged resources first.
+_local_qwebchannel = os.path.join(
+    os.path.dirname(__file__), "resources", "qwebchannel.js"
 )
-with open(path_qwebchannel, "r", encoding="utf-8") as f:
-    QWEBCHANNEL_JS = f.read()
+if os.path.isfile(_local_qwebchannel):
+    with open(_local_qwebchannel, "r", encoding="utf-8") as f:
+        QWEBCHANNEL_JS = f.read()
+else:
+    # Fall back to the copy shipped with PySide6
+    _pyside_path = os.path.join(
+        os.path.dirname(PySide6.__file__),
+        "Qt",
+        "resources",
+        "qtwebchannel",
+        "qwebchannel.js",
+    )
+    with open(_pyside_path, "r", encoding="utf-8") as f:
+        QWEBCHANNEL_JS = f.read()
 
 # Path to the JSON file storing selectors
 SELECTORS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "selectors.json")

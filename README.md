@@ -138,6 +138,10 @@ highlight elements and click one to generate a CSS selector. You can **Copier**
 the selector to the clipboard or **Sauvegarder** it. Saved selectors are stored
   in `selectors.json` at the root of the project.
 
+The JavaScript helper `qwebchannel.js` required by this tool is bundled in the
+repository at `ui/resources/qwebchannel.js`. If it is missing, the application
+falls back to the version provided by PySide6.
+
 ### Scraping d’image
 
 The **Scraping d’image** tab now displays a thumbnail preview before files are
