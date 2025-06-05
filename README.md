@@ -31,6 +31,10 @@ modifying the source. The defaults are defined in `config.py`:
 * `LINKS_FILE_PATH` – text file listing product URLs. Defaults to
   `BASE_DIR/liens_clean.txt`.
 
+A minimal template file `custom_suffixes.example.py` is included in the
+repository. Copy it to `custom_suffixes.py` and edit it to provide your own
+suffixes.
+
 Set the environment variables to override these locations when running the
 scripts.
 
