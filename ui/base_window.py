@@ -30,6 +30,8 @@ from PySide6.QtWidgets import (
     QStackedLayout,
     QProgressBar,
     QTextEdit,
+    QTableWidget,
+    QTableWidgetItem,
     QListWidget,
     QListWidgetItem,
     QVBoxLayout,
@@ -37,6 +39,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
+import pandas as pd
 from ui.components import RoundButton, Sidebar, show_success, show_error
 from ui.style import apply_theme, style_progress_bar
 from scraper_woocommerce import ScraperCore
@@ -223,6 +226,7 @@ class MainWindow(QMainWindow):
         # per-tab progress managers
         self.scraper_tab = TabProgress(self.progress_bar, self.label_time, self.console_scraper, self)
         self.images_tab = TabProgress(self.progress_bar_img, self.label_time_img, self.console_images, self)
+        self.images_adv_tab = TabProgress(self.progress_bar_adv, self.label_time_adv, self.console_adv_images, self)
         self.optimizer_tab = TabProgress(self.progress_bar_opt, self.label_time_opt, self.console_optimizer, self)
 
     def _redirect_console(self):
@@ -230,6 +234,8 @@ class MainWindow(QMainWindow):
         self.console_output_scraper.outputWritten.connect(self.console_scraper.append)
         self.console_output_images = ConsoleOutput()
         self.console_output_images.outputWritten.connect(self.console_images.append)
+        self.console_output_adv_images = ConsoleOutput()
+        self.console_output_adv_images.outputWritten.connect(self.console_adv_images.append)
         self.console_output_optimizer = ConsoleOutput()
         self.console_output_optimizer.outputWritten.connect(self.console_optimizer.append)
 
@@ -274,6 +280,7 @@ class MainWindow(QMainWindow):
         for text in [
             "Scraper",
             "Scraping d'image",
+            "Images avancées",
             "Optimiser Images",
             "Sélecteur visuel",
             "API Flask",
@@ -290,6 +297,7 @@ class MainWindow(QMainWindow):
         # Pages
         self.page_scraper = self._create_scraper_page()
         self.page_image = self._create_image_page()
+        self.page_image_adv = self._create_advanced_image_page()
         self.page_selector = self._create_visual_selector_page()
         self.page_optimizer = self._create_optimizer_page()
         self.page_api = self._create_api_page()
@@ -297,14 +305,16 @@ class MainWindow(QMainWindow):
 
         self.stack.addWidget(self.page_scraper)
         self.stack.addWidget(self.page_image)
-        self.stack.addWidget(self.page_selector)
+        self.stack.addWidget(self.page_image_adv)
         self.stack.addWidget(self.page_optimizer)
+        self.stack.addWidget(self.page_selector)
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
 
         pages = [
             self.page_scraper,
             self.page_image,
+            self.page_image_adv,
             self.page_optimizer,
             self.page_selector,
             self.page_api,
@@ -520,6 +530,75 @@ class MainWindow(QMainWindow):
 
         return page
 
+    def _create_advanced_image_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(15)
+
+        file_layout = QHBoxLayout()
+        self.input_adv_file = QLineEdit(self.scraper.chemin_liens_images)
+        file_layout.addWidget(self.input_adv_file)
+        btn_file = RoundButton("Parcourir…")
+        btn_file.clicked.connect(self._choose_adv_file)
+        file_layout.addWidget(btn_file)
+        layout.addLayout(file_layout)
+
+        domain_layout = QHBoxLayout()
+        domain_layout.addWidget(QLabel("Domaine"))
+        self.input_adv_domain = QLineEdit(config.WP_DOMAIN)
+        domain_layout.addWidget(self.input_adv_domain)
+        layout.addLayout(domain_layout)
+
+        upload_layout = QHBoxLayout()
+        upload_layout.addWidget(QLabel("Chemin upload"))
+        self.input_adv_upload = QLineEdit(config.WP_UPLOAD_PATH)
+        upload_layout.addWidget(self.input_adv_upload)
+        layout.addLayout(upload_layout)
+
+        pattern_layout = QHBoxLayout()
+        pattern_layout.addWidget(QLabel("Pattern"))
+        self.input_adv_pattern = QLineEdit(config.IMAGE_NAME_PATTERN)
+        pattern_layout.addWidget(self.input_adv_pattern)
+        layout.addLayout(pattern_layout)
+
+        self.cb_adv_save_json = QCheckBox("Sauvegarder mapping JSON")
+        self.cb_adv_save_json.setChecked(True)
+        layout.addWidget(self.cb_adv_save_json)
+
+        self.btn_start_adv = RoundButton("Lancer scraping avancé")
+        self.btn_start_adv.clicked.connect(self._on_start_advanced_images)
+        layout.addWidget(self.btn_start_adv)
+        self.btn_stop_adv = RoundButton("Arrêter", color="secondary")
+        self.btn_stop_adv.clicked.connect(lambda: self._stop_worker(self.images_adv_tab))
+        layout.addWidget(self.btn_stop_adv)
+
+        self.progress_bar_adv = QProgressBar()
+        self.progress_bar_adv.setRange(0, 100)
+        self.progress_bar_adv.setFixedHeight(25)
+        style_progress_bar(self.progress_bar_adv)
+        layout.addWidget(self.progress_bar_adv)
+        self.label_time_adv = QLabel("")
+        layout.addWidget(self.label_time_adv)
+
+        self.console_adv_images = QTextEdit()
+        self.console_adv_images.setReadOnly(True)
+        self.console_adv_images.setFixedHeight(200)
+
+        btn_clear_console = RoundButton("Vider la console", color="secondary")
+        btn_clear_console.clicked.connect(self.console_adv_images.clear)
+        layout.addWidget(btn_clear_console)
+        layout.addWidget(self.console_adv_images)
+
+        self.table_adv = QTableWidget()
+        layout.addWidget(self.table_adv)
+
+        btn_export = RoundButton("Exporter CSV/Excel")
+        btn_export.clicked.connect(self._export_adv_table)
+        layout.addWidget(btn_export)
+
+        return page
+
     def _create_visual_selector_page(self):
         from ui.visual_selector import VisualSelectorPage
         page = VisualSelectorPage()
@@ -675,7 +754,7 @@ class MainWindow(QMainWindow):
             if tab.current_worker:
                 tab.current_worker.stop()
         else:
-            for t in (self.scraper_tab, self.images_tab, self.optimizer_tab):
+            for t in (self.scraper_tab, self.images_tab, self.images_adv_tab, self.optimizer_tab):
                 if t.current_worker:
                     t.current_worker.stop()
 
@@ -873,6 +952,11 @@ class MainWindow(QMainWindow):
         if path:
             self.input_img_links.setText(path)
 
+    def _choose_adv_file(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Choisir fichier Excel/CSV")
+        if path:
+            self.input_adv_file.setText(path)
+
     def _choose_opt_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Choisir le dossier à optimiser")
         if folder:
@@ -883,6 +967,25 @@ class MainWindow(QMainWindow):
         if path:
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.console_optimizer.toPlainText())
+
+    def _export_adv_table(self):
+        if not hasattr(self, "adv_df") or self.adv_df is None or self.adv_df.empty:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exporter",
+            filter="Excel (*.xlsx);;CSV (*.csv)"
+        )
+        if not path:
+            return
+        try:
+            if path.lower().endswith(".csv"):
+                self.adv_df.to_csv(path, index=False)
+            else:
+                self.adv_df.to_excel(path, index=False)
+            show_success("Export réussi", self)
+        except Exception as e:
+            show_error(f"Erreur export: {e}", self)
 
     def _save_config(self):
         data = config_manager.load()
@@ -1020,6 +1123,79 @@ class MainWindow(QMainWindow):
         show_success("Images sauvegardées", self)
         self.preview_list.clear()
         self.pending_images = []
+
+    def _on_start_advanced_images(self):
+        path = self.input_adv_file.text().strip()
+        if not path or not os.path.isfile(path):
+            show_error("Fichier introuvable", self)
+            return
+        try:
+            if path.lower().endswith(".csv"):
+                df = pd.read_csv(path)
+            else:
+                df = pd.read_excel(path)
+        except Exception as e:
+            show_error(f"Erreur lecture fichier: {e}", self)
+            return
+
+        if not {"id", "url"}.issubset({c.lower() for c in df.columns}):
+            show_error("Colonnes 'id' et 'url' requises", self)
+            return
+
+        col_map = {c.lower(): c for c in df.columns}
+        items = [{"id": str(row[col_map["id"]]), "url": row[col_map["url"]]} for _, row in df.iterrows()]
+
+        domain = self.input_adv_domain.text().strip() or config.WP_DOMAIN
+        upload = self.input_adv_upload.text().strip() or config.WP_UPLOAD_PATH
+        pattern = self.input_adv_pattern.text().strip() or config.IMAGE_NAME_PATTERN
+        headless = self.cb_headless.isChecked()
+        save_json = self.cb_adv_save_json.isChecked()
+
+        def task(progress_callback, should_stop):
+            return self.scraper.scrap_images_variantes(
+                items,
+                domain,
+                upload,
+                pattern,
+                progress_callback=progress_callback,
+                should_stop=should_stop,
+                headless=headless,
+            )
+
+        worker = Worker(task, console_output=self.console_output_adv_images)
+        worker.status.connect(self.console_adv_images.append)
+        worker.progress.connect(self.images_adv_tab.update_progress)
+        self.images_adv_tab.start(worker)
+
+        def handle_result(res):
+            self.table_adv.setRowCount(0)
+            self.table_adv.setColumnCount(0)
+            if isinstance(res, pd.DataFrame):
+                self.adv_df = res
+                self.table_adv.setColumnCount(len(res.columns))
+                self.table_adv.setHorizontalHeaderLabels(list(res.columns))
+                self.table_adv.setRowCount(len(res))
+                for i, row in enumerate(res.itertuples(index=False)):
+                    for j, value in enumerate(row):
+                        self.table_adv.setItem(i, j, QTableWidgetItem(str(value)))
+                if not save_json:
+                    mapping = os.path.join(self.scraper.results_dir or self.scraper.base_dir, "mapping_images_variantes.json")
+                    if os.path.exists(mapping):
+                        try:
+                            os.remove(mapping)
+                        except Exception:
+                            pass
+
+        worker.result.connect(handle_result)
+
+        def on_finished():
+            self._threads.remove(worker)
+            print("Thread terminé")
+
+        worker.finished.connect(on_finished)
+        worker.finished.connect(worker.deleteLater)
+        self._threads.append(worker)
+        worker.start()
 
     def _on_start_optimizer(self):
         folder = self.input_opt_folder.text().strip()

@@ -86,6 +86,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Accueil", QStyle.SP_DesktopIcon),
             ("Scraper", QStyle.SP_FileIcon),
             ("Scraping d'image", QStyle.SP_DirIcon),
+            ("Images avancées", QStyle.SP_DirIcon),
             ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
             ("Optimiseur d'images", QStyle.SP_ComputerIcon),
             ("API Flask", QStyle.SP_BrowserReload),
@@ -107,6 +108,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_dashboard = self._create_dashboard_page()
         self.page_scraper = super()._create_scraper_page()
         self.page_image = super()._create_image_page()
+        self.page_image_adv = super()._create_advanced_image_page()
         self.page_selector = super()._create_visual_selector_page()
         self.page_optimizer = super()._create_optimizer_page()
         self.page_api = super()._create_api_page()
@@ -116,6 +118,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_dashboard,
             self.page_scraper,
             self.page_image,
+            self.page_image_adv,
             self.page_selector,
             self.page_optimizer,
             self.page_api,
