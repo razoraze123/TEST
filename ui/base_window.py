@@ -37,7 +37,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
-from ui.components import RoundButton, Sidebar
+from ui.components import RoundButton, Sidebar, show_success, show_error
 from ui.style import apply_theme
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
@@ -261,7 +261,7 @@ class MainWindow(QMainWindow):
 
     def _show_result(self, message):
         if message:
-            QMessageBox.information(self, "Terminé", message)
+            show_success(message, self)
 
     def _show_page(self, page):
         self.stack.setCurrentWidget(page)
@@ -867,9 +867,9 @@ class MainWindow(QMainWindow):
                 self.input_parent.setText(base)
                 self.input_folder_name.setText(final_name)
                 self._update_full_path()
-                QMessageBox.information(self, "Dossier", f"Créé : {path}")
+                show_success(f"Créé : {path}", self)
             except Exception as e:
-                QMessageBox.warning(self, "Dossier", f"Erreur création : {e}")
+                show_error(f"Erreur création : {e}", self)
 
     def _choose_liens_file(self):
         path, _ = QFileDialog.getOpenFileName(self, "Choisir fichier liens")
@@ -952,7 +952,7 @@ class MainWindow(QMainWindow):
     def _on_test_single_image(self):
         url = self.input_single_url.text().strip()
         if not url:
-            QMessageBox.warning(self, "Lien", "Veuillez saisir un lien valide")
+            show_error("Veuillez saisir un lien valide", self)
             return
         dest = self.input_img_folder.text().strip() or os.path.join(self.scraper.base_dir, "images")
         show_preview = self.cb_preview_images.isChecked()
@@ -1030,14 +1030,14 @@ class MainWindow(QMainWindow):
                 os.remove(final_path)
             os.rename(temp_path, final_path)
 
-        QMessageBox.information(self, "Images", "Images sauvegardées")
+        show_success("Images sauvegardées", self)
         self.preview_list.clear()
         self.pending_images = []
 
     def _on_start_optimizer(self):
         folder = self.input_opt_folder.text().strip()
         if not folder:
-            QMessageBox.warning(self, "Dossier", "Veuillez choisir un dossier valide")
+            show_error("Veuillez choisir un dossier valide", self)
             return
 
         optipng = self.input_optipng_path.text().strip() or config.OPTIPNG_PATH
@@ -1068,7 +1068,7 @@ class MainWindow(QMainWindow):
                     image_files.append(os.path.join(root, f))
 
         if not image_files:
-            QMessageBox.warning(self, "Images", "Aucun fichier PNG ou WebP trouvé dans ce dossier")
+            show_error("Aucun fichier PNG ou WebP trouvé dans ce dossier", self)
             return
 
         optimizer = ImageOptimizer(optipng, cwebp)
@@ -1094,7 +1094,7 @@ class MainWindow(QMainWindow):
                 self.extra_links[ident] = url
                 self.scraper_tab.console.append(f"Ajouté {ident} -> {url}")
             else:
-                QMessageBox.warning(self, "Format", "Utiliser ID|URL")
+                show_error("Utiliser ID|URL", self)
 
     def closeEvent(self, event):
         """Ensure all running threads are stopped before closing."""
