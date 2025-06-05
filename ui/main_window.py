@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
-from main import MainWindow
+from ui.base_window import MainWindow
 
 
 class DashboardWindow(MainWindow):
