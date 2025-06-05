@@ -107,6 +107,35 @@ This starts the PySide6 interface for scraping WooCommerce products.
 
 Use the "Mode sans t\u00eate (headless)" checkbox in the settings page to run Chrome without opening a visible window.
 
+### Adding Custom Pages
+
+You can extend the dashboard with your own pages:
+
+1. Define a new `_create_<name>_page` method in `DashboardWindow` or
+   `BaseWindow`. The method should return the widget representing the page.
+2. Call this method inside `_setup_ui` and append the widget to `self.stack`.
+3. Insert an entry in the appropriate sidebar section using `add_section` or
+   `self.sidebar.addItem` so users can navigate to the page.
+
+Example for a **Saisie de pièces** page:
+
+```python
+class DashboardWindow(...):
+    def _create_saisie_de_pieces_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("Saisie de pièces"))
+        layout.addStretch(1)
+        return page
+
+    def _setup_ui(self):
+        ...
+        self.page_saisie = self._create_saisie_de_pieces_page()
+        self.stack.addWidget(self.page_saisie)
+        ...
+        self.sidebar.addItem(QListWidgetItem("Saisie de pièces"))
+```
+
 ## Image Optimization Tools
 The project includes an optional image optimizer. Before using this feature,
 download `optipng.exe` and `cwebp.exe` and place them inside the
