@@ -45,6 +45,12 @@ QTextEdit {{
     color: white;
 }}
 QListWidget::item {{padding: 8px; margin: 2px; border-radius: 6px;}}
+QListWidget::item[header="true"] {{
+    background-color: #1e1e1e;
+    color: #f5f5f5;
+    margin-top: 6px;
+    font-weight: bold;
+}}
 QListWidget::item:selected {{background: {PRIMARY_BLUE};}}
 QFrame[card="true"] {{background: #414141; border-radius: 8px; padding: 16px;}}
 """
@@ -80,6 +86,12 @@ QTextEdit {{
     color: white;
 }}
 QListWidget::item {{padding: 8px; margin: 2px; border-radius: 6px;}}
+QListWidget::item[header="true"] {{
+    background-color: #1e1e1e;
+    color: #f5f5f5;
+    margin-top: 6px;
+    font-weight: bold;
+}}
 QListWidget::item:selected {{background: {PRIMARY_BLUE};}}
 QFrame[card="true"] {{background: #eee; border-radius: 8px; padding: 16px;}}
 """

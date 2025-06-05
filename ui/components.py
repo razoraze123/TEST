@@ -56,6 +56,7 @@ class Sidebar(QListWidget):
         display = f"{icon}  {text}" if icon else text
         item = QListWidgetItem(display)
         item.setFlags(Qt.NoItemFlags)
+        item.setData(Qt.UserRole, "true")
         font = item.font()
         font.setBold(True)
         item.setFont(font)
