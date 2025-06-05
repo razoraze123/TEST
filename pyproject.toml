@@ -1,0 +1,21 @@
+[project]
+name = "woocommerce-scraper"
+version = "0.1.0"
+description = "Tools for scraping WooCommerce products"
+authors = [{name = "Unknown"}]
+requires-python = ">=3.10"
+dependencies = [
+    "selenium",
+    "beautifulsoup4",
+    "pandas",
+    "openpyxl",
+    "requests",
+    "flask",
+    "PySide6",
+    "webdriver-manager",
+    "playwright",
+]
+
+[project.scripts]
+woocommerce-scraper = "cli:main"
+

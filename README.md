@@ -133,5 +133,37 @@ During scraping, progress is stored in `scraping_checkpoint.json` inside
 `ScraperCore.start_scraping(resume=True)` with the same parameters to continue
 from the last checkpoint.
 
+## Command Line Interface
+
+Installing the project with `pip install .` exposes a `woocommerce-scraper`
+command that provides a few helpful utilities:
+
+```bash
+woocommerce-scraper scrape            # scrape descriptions
+woocommerce-scraper scrape-images     # download product images
+woocommerce-scraper optimize FOLDER   # optimize images inside FOLDER
+woocommerce-scraper resume            # continue a previous scrape
+```
+
+### Automating with Cron (Linux/macOS)
+
+Add a cron entry with `crontab -e` to run the scraper periodically. For example
+to start every day at 3 AM:
+
+```cron
+0 3 * * * /usr/bin/woocommerce-scraper scrape >> /path/to/log.txt 2>&1
+```
+
+### Automating with Windows Task Scheduler
+
+Create a new **Basic Task** and set the action to start `cmd.exe` with the
+argument:
+
+```
+/C woocommerce-scraper scrape
+```
+
+Ensure that Python and the console script are in the system `PATH`.
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
