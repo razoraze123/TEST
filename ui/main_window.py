@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QLabel, QLineEdit, QFrame, QPushButton, QStackedLayout, QStyle
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,  # added QGridLayout
+    QListWidget, QListWidgetItem, QLabel, QLineEdit,
+    QFrame, QPushButton, QStackedLayout, QStyle
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
