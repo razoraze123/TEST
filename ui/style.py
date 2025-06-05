@@ -93,3 +93,11 @@ def apply_theme(widget, theme="dark"):
     """Apply the selected theme to the given widget."""
     qss = THEMES.get(theme, "")
     widget.setStyleSheet(qss)
+
+
+def style_progress_bar(bar):
+    """Apply consistent styling to a QProgressBar widget."""
+    bar.setStyleSheet(
+        "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
+        f"QProgressBar::chunk {{background-color:{PRIMARY_BLUE}; border-radius:8px;}}"
+    )
