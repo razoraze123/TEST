@@ -10,6 +10,13 @@ Install the Python dependencies using:
 pip install -r requirements.txt
 ```
 
+### Quick Start
+
+```bash
+pip install -r requirements.txt
+python Application.py
+```
+
 ## Configuring Paths
 Paths are read from environment variables so you can customise them without
 modifying the source. Set the following variables before running the scripts
@@ -33,10 +40,10 @@ If these variables are not set, reasonable defaults defined in `config.py` are
 used.
 
 ## Running the Application
-Launch the GUI application with:
+`Application.py` is the unique entry point aggregating the GUI, scraping and optimizer features. Launch the GUI with:
 
 ```bash
-python main.py
+python Application.py
 ```
 
 This starts the PySide6 interface for scraping WooCommerce products.
