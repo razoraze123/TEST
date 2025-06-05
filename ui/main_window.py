@@ -16,9 +16,10 @@ from PySide6.QtGui import QIcon
 
 from ui.base_window import MainWindow
 from ui.style import apply_theme
+from ui.responsive import ResponsiveMixin
 
 
-class DashboardWindow(MainWindow):
+class DashboardWindow(ResponsiveMixin, MainWindow):
     """Main window with modern dashboard layout."""
 
     def __init__(self, user_name="Utilisateur"):
@@ -36,25 +37,26 @@ class DashboardWindow(MainWindow):
         # Header -------------------------------------------------------
         header = QFrame()
         header.setObjectName("Header")
-        header_layout = QHBoxLayout(header)
-        header_layout.setContentsMargins(10, 10, 10, 10)
-        header_layout.setSpacing(10)
+        self.header_layout = QHBoxLayout(header)
+        self.header_layout.setContentsMargins(10, 10, 10, 10)
+        self.header_layout.setSpacing(10)
         self.label_welcome = QLabel(f"Bienvenue, {self.user_name} !")
         self.edit_search = QLineEdit()
         self.edit_search.setPlaceholderText("Recherche...")
-        header_layout.addWidget(self.label_welcome)
-        header_layout.addStretch(1)
-        header_layout.addWidget(self.edit_search)
+        self.header_layout.addWidget(self.label_welcome)
+        self.header_layout.addStretch(1)
+        self.header_layout.addWidget(self.edit_search)
         main_layout.addWidget(header)
 
         # Body ---------------------------------------------------------
-        body_layout = QHBoxLayout()
-        body_layout.setContentsMargins(0, 0, 0, 0)
-        body_layout.setSpacing(0)
-        main_layout.addLayout(body_layout, 1)
+        self.body_layout = QHBoxLayout()
+        self.body_layout.setContentsMargins(0, 0, 0, 0)
+        self.body_layout.setSpacing(0)
+        main_layout.addLayout(self.body_layout, 1)
 
         # Sidebar menu
-        self.sidebar = Sidebar()
+        self.sidebar = Sidebar(collapsible=True)
+        self.sidebar._expanded_width = 180
         self.sidebar.setFixedWidth(180)
         self.sidebar.setSpacing(4)
 
@@ -71,12 +73,13 @@ class DashboardWindow(MainWindow):
             it = QListWidgetItem(self.style().standardIcon(icon), text)
             self.sidebar.addItem(it)
         self.sidebar.setCurrentRow(0)
-        body_layout.addWidget(self.sidebar)
+        self.body_layout.addWidget(self.sidebar)
 
         # Stacked pages
         stack_container = QWidget()
         self.stack = QStackedLayout(stack_container)
-        body_layout.addWidget(stack_container, 1)
+        self.body_layout.addWidget(stack_container, 1)
+        self.body_layout.setStretch(1, 1)
 
         # Pages from base class
         self.page_dashboard = self._create_dashboard_page()
@@ -106,9 +109,9 @@ class DashboardWindow(MainWindow):
     # ------------------------------------------------------------------
     def _create_dashboard_page(self):
         page = QWidget()
-        layout = QGridLayout(page)
-        layout.setSpacing(20)
-        layout.setContentsMargins(20, 20, 20, 20)
+        self.dashboard_grid = QGridLayout(page)
+        self.dashboard_grid.setSpacing(20)
+        self.dashboard_grid.setContentsMargins(20, 20, 20, 20)
 
         def add_card(text, icon, row, col, callback=None):
             frame = Card()
@@ -123,7 +126,7 @@ class DashboardWindow(MainWindow):
             if callback:
                 btn.clicked.connect(callback)
                 frame.mousePressEvent = lambda e, b=btn: b.click()
-            layout.addWidget(frame, row, col)
+            self.dashboard_grid.addWidget(frame, row, col)
 
         add_card(
             "Nouvelle tâche",
@@ -146,3 +149,25 @@ class DashboardWindow(MainWindow):
             0,
         )
         return page
+
+    # ------------------------------------------------------------------
+    def apply_responsive(self, values):
+        """Adjust margins, spacings and sidebar state on resize."""
+        margin = values.get("margin", 20)
+        spacing = values.get("spacing", 20)
+        font = values.get("font", 14)
+        collapse = values.get("collapse", False)
+
+        self.header_layout.setContentsMargins(margin, margin, margin, margin)
+        self.header_layout.setSpacing(spacing)
+        self.body_layout.setSpacing(spacing)
+        self.dashboard_grid.setSpacing(spacing)
+        self.dashboard_grid.setContentsMargins(margin, margin, margin, margin)
+
+        self.label_welcome.setStyleSheet(f"font-size: {font + 2}px;")
+        self.edit_search.setStyleSheet(f"font-size: {font}px;")
+
+        if collapse:
+            self.sidebar.collapse()
+        else:
+            self.sidebar.expand()
