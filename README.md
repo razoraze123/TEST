@@ -123,5 +123,15 @@ python flask_server.py
 
 The server listens on port `5000` by default.
 
+## Logging
+All console output is also written to `logs/app.log` at the repository root. The
+file rotates automatically when it reaches about 1 MB.
+
+## Resuming a Scrape
+During scraping, progress is stored in `scraping_checkpoint.json` inside
+`BASE_DIR`. If the process stops unexpectedly, run
+`ScraperCore.start_scraping(resume=True)` with the same parameters to continue
+from the last checkpoint.
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
