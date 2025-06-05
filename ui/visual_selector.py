@@ -9,12 +9,24 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebChannel import QWebChannel
+from PySide6.QtWebEngineCore import QWebEngineScript
+import PySide6
 
 import logging
 
 import json
 import os
 from urllib.parse import urlparse
+
+path_qwebchannel = os.path.join(
+    os.path.dirname(PySide6.__file__),
+    "Qt",
+    "resources",
+    "qtwebchannel",
+    "qwebchannel.js",
+)
+with open(path_qwebchannel, "r", encoding="utf-8") as f:
+    QWEBCHANNEL_JS = f.read()
 
 # Path to the JSON file storing selectors
 SELECTORS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "selectors.json")
@@ -92,6 +104,13 @@ class VisualSelectorPage(QWidget):
         self.channel = QWebChannel()
         self.channel.registerObject("pyObj", self.bridge)
         self.webview.page().setWebChannel(self.channel)
+
+        # Load qwebchannel.js at document creation
+        self._qweb_script = QWebEngineScript()
+        self._qweb_script.setSourceCode(QWEBCHANNEL_JS)
+        self._qweb_script.setInjectionPoint(QWebEngineScript.DocumentCreation)
+        self._qweb_script.setWorldId(QWebEngineScript.MainWorld)
+        self.webview.page().scripts().insert(self._qweb_script)
 
         self.btn_open.clicked.connect(self.load_url)
         self.btn_copy.clicked.connect(self.copy_selector)
@@ -182,5 +201,11 @@ class VisualSelectorPage(QWidget):
         """
 
         page = self.webview.page()
-        page.runJavaScript(js_channel)
-        page.runJavaScript(js)
+
+        def _after_check(res):
+            logging.info("QWebChannel present: %s", res)
+            assert res, "qwebchannel.js not loaded"
+            page.runJavaScript(js_channel)
+            page.runJavaScript(js)
+
+        page.runJavaScript("typeof QWebChannel !== 'undefined'", _after_check)
