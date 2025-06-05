@@ -86,6 +86,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Accueil", QStyle.SP_DesktopIcon),
             ("Scraper", QStyle.SP_FileIcon),
             ("Scraping d'image", QStyle.SP_DirIcon),
+            ("Scraping d'images avancé", QStyle.SP_DirIcon),
             ("Images avancées", QStyle.SP_DirIcon),
             ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
             ("Optimiseur d'images", QStyle.SP_ComputerIcon),
