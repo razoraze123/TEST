@@ -141,6 +141,22 @@ During scraping, progress is stored in `scraping_checkpoint.json` inside
 `ScraperCore.start_scraping(resume=True)` with the same parameters to continue
 from the last checkpoint.
 
+## Database
+
+All scraped information is also stored in an SQLite database located at
+`BASE_DIR/scraper.db`. The file is created automatically on first use. You can
+query it directly using the helper functions in `storage.py` or any SQLite
+client. For example:
+
+```bash
+python - <<'EOF'
+from storage import search_products
+print(search_products("shoe"))
+EOF
+```
+
+Future versions of the CLI and HTTP API will expose similar search features.
+
 ## Command Line Interface
 
 Installing the project with `pip install .` exposes a `woocommerce-scraper`

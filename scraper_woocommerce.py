@@ -15,6 +15,7 @@ from logging import getLogger
 from playwright.async_api import async_playwright
 import config
 import logger_setup  # noqa: F401  # configure logging
+import storage
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -44,6 +45,9 @@ class ScraperCore:
         self.results_dir = ""
         self.json_dir = ""
         self.checkpoint_file = os.path.join(self.base_dir, "scraping_checkpoint.json")
+
+        self.db_path = storage.db_path(self.base_dir)
+        storage.init_db(self.base_dir)
 
         self._progress = 0
         self._logs = []
@@ -384,6 +388,14 @@ class ScraperCore:
                         continue
 
                 nom_dossier = self.clean_name(product_name).replace(" ", "-")
+                storage.upsert_product(
+                    id_produit,
+                    product_name,
+                    base_sku,
+                    product_price if len(variant_names) <= 1 else "",
+                    nom_dossier,
+                    self.base_dir,
+                )
 
                 if len(variant_names) <= 1:
                     woocommerce_rows.append({
@@ -394,6 +406,13 @@ class ScraperCore:
                         "Regular price": product_price,
                         "Nom du dossier": nom_dossier
                     })
+                    storage.upsert_variant(
+                        id_produit,
+                        base_sku,
+                        "",
+                        product_price,
+                        self.base_dir,
+                    )
                     continue
 
                 woocommerce_rows.append({
@@ -423,6 +442,13 @@ class ScraperCore:
                         "Regular price": product_price,
                         "Nom du dossier": nom_dossier
                     })
+                    storage.upsert_variant(
+                        id_produit,
+                        child_sku,
+                        v,
+                        product_price,
+                        self.base_dir,
+                    )
 
             except Exception as e:
                 self._log(f"❌ Erreur sur {url} → {e}\n")
@@ -506,6 +532,14 @@ class ScraperCore:
 
             variant_names = [e.get_text(strip=True) for e in soup.select("label.color-swatch span.sr-only")]
             nom_dossier = self.clean_name(product_name).replace(" ", "-")
+            storage.upsert_product(
+                id_produit,
+                product_name,
+                base_sku,
+                product_price if len(variant_names) <= 1 else "",
+                nom_dossier,
+                self.base_dir,
+            )
 
             if len(variant_names) <= 1:
                 woocommerce_rows.append({
@@ -516,6 +550,13 @@ class ScraperCore:
                     "Regular price": product_price,
                     "Nom du dossier": nom_dossier,
                 })
+                storage.upsert_variant(
+                    id_produit,
+                    base_sku,
+                    "",
+                    product_price,
+                    self.base_dir,
+                )
                 continue
 
             woocommerce_rows.append({
@@ -545,6 +586,13 @@ class ScraperCore:
                     "Regular price": product_price,
                     "Nom du dossier": nom_dossier,
                 })
+                storage.upsert_variant(
+                    id_produit,
+                    child_sku,
+                    v,
+                    product_price,
+                    self.base_dir,
+                )
 
         df = pd.DataFrame(woocommerce_rows)
         df.to_excel(self.fichier_excel, index=False)
@@ -671,10 +719,26 @@ class ScraperCore:
                     f2.write(txt_content)
 
                 self._log(f"✅ Extraction OK ({filename})")
+                storage.record_competitor(
+                    id_produit,
+                    title,
+                    url,
+                    txt_path,
+                    "OK",
+                    self.base_dir,
+                )
                 recap_data.append((filename, title, url, "Extraction OK"))
                 n_ok += 1
             except Exception as e:
                 self._log(f"❌ Extraction Échec — {str(e)}")
+                storage.record_competitor(
+                    id_produit,
+                    "",
+                    url,
+                    "",
+                    "Erreur",
+                    self.base_dir,
+                )
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 n_err += 1
 
@@ -741,6 +805,14 @@ class ScraperCore:
         recap_data = []
         for id_produit, url, html in results:
             if html is None:
+                storage.record_competitor(
+                    id_produit,
+                    "",
+                    url,
+                    "",
+                    "Erreur",
+                    self.base_dir,
+                )
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 continue
             soup = BeautifulSoup(html, "html.parser")
@@ -750,6 +822,14 @@ class ScraperCore:
                 or soup.find("h1")
             )
             if not title_tag:
+                storage.record_competitor(
+                    id_produit,
+                    "",
+                    url,
+                    "",
+                    "Titre introuvable",
+                    self.base_dir,
+                )
                 recap_data.append(("?", "?", url, "Titre introuvable"))
                 continue
             title = title_tag.get_text(strip=True)
@@ -762,6 +842,14 @@ class ScraperCore:
                 or soup.find("div", class_="prose")
             )
             if not description_div:
+                storage.record_competitor(
+                    id_produit,
+                    title,
+                    url,
+                    "",
+                    "Description introuvable",
+                    self.base_dir,
+                )
                 recap_data.append(("?", title, url, "Description introuvable"))
                 continue
 
@@ -774,6 +862,14 @@ class ScraperCore:
             with open(txt_path, "w", encoding="utf-8") as f:
                 f.write(txt_content)
 
+            storage.record_competitor(
+                id_produit,
+                title,
+                url,
+                txt_path,
+                "OK",
+                self.base_dir,
+            )
             recap_data.append((filename, title, url, "Extraction OK"))
 
         df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
