@@ -100,6 +100,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.sidebar.addItem(QListWidgetItem(""))
         self.sidebar.add_section("📒  Comptabilité")
         accounting_items = [
+            ("Journal", QStyle.SP_FileDialogInfoView),
             ("Paramètres", QStyle.SP_FileDialogDetailedView),
         ]
         for text, icon in accounting_items:
@@ -123,6 +124,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_optimizer = super()._create_optimizer_page()
         self.page_api = super()._create_api_page()
         self.page_settings = super()._create_settings_page()
+        self.page_journal = self._create_journal_page()
 
         for p in [
             self.page_dashboard,
@@ -133,6 +135,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_optimizer,
             self.page_api,
             self.page_settings,
+            self.page_journal,
         ]:
             self.stack.addWidget(p)
 
@@ -199,6 +202,14 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             1,
             0,
         )
+        return page
+
+    # ------------------------------------------------------------------
+    def _create_journal_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("Journal comptable"))
+        layout.addStretch(1)
         return page
 
     # ------------------------------------------------------------------
