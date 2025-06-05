@@ -51,6 +51,18 @@ class Sidebar(QListWidget):
         self.collapsed = False
         self.setFixedWidth(self._expanded_width)
 
+    def add_section(self, text: str, icon: str | None = None):
+        """Insert a non-selectable header item."""
+        display = f"{icon}  {text}" if icon else text
+        item = QListWidgetItem(display)
+        item.setFlags(Qt.NoItemFlags)
+        font = item.font()
+        font.setBold(True)
+        item.setFont(font)
+        item.setBackground(QColor(style.SURFACE_DARK))
+        self.addItem(item)
+        return item
+
     def collapse(self):
         if not self.collapsible or self.collapsed:
             return
