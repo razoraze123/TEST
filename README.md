@@ -5,10 +5,10 @@
 - Python 3.10 or newer.
 - Google Chrome. The ChromeDriver binary is downloaded automatically at runtime if `CHROME_DRIVER_PATH` is empty.
 
-Install the Python dependencies using:
+Install the project using:
 
 ```bash
-pip install -r requirements.txt
+pip install .
 ```
 
 If you plan to use asynchronous scraping, also install the
@@ -21,14 +21,30 @@ playwright install
 ### Quick Start
 
 ```bash
-pip install -r requirements.txt
+pip install .
 python Application.py
 ```
+
+### Other Installation Options
+
+- **Docker**
+
+  ```bash
+  docker build -t woocommerce-scraper .
+  docker run --rm woocommerce-scraper
+  ```
+
+- **Standalone Executable**
+
+  ```bash
+  ./build.sh
+  dist/woocommerce-scraper --help
+  ```
 
 ### Running Tests
 
 ```bash
-pip install -r requirements.txt
+pip install .[test]
 pytest
 ```
 
