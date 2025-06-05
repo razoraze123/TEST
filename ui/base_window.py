@@ -626,18 +626,24 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(page)
         layout.setAlignment(Qt.AlignTop)
 
-        layout.addWidget(QLabel("Chemin du chromedriver"))
+        layout.addWidget(QLabel("Chemin du chromedriver (optionnel)"))
         driver_layout = QHBoxLayout()
         self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH or "")
+        self.input_driver_path.setPlaceholderText(
+            "Laisser vide pour téléchargement automatique"
+        )
         btn_driver = QPushButton("Parcourir")
         btn_driver.clicked.connect(self._choose_driver_path)
         driver_layout.addWidget(self.input_driver_path)
         driver_layout.addWidget(btn_driver)
         layout.addLayout(driver_layout)
 
-        layout.addWidget(QLabel("Chemin du navigateur Chrome"))
+        layout.addWidget(QLabel("Chemin du navigateur Chrome (optionnel)"))
         binary_layout = QHBoxLayout()
         self.input_binary_path = QLineEdit(config.CHROME_BINARY_PATH or "")
+        self.input_binary_path.setPlaceholderText(
+            "Laisser vide si Chrome est dans le PATH"
+        )
         btn_binary = QPushButton("Parcourir")
         btn_binary.clicked.connect(self._choose_binary_path)
         binary_layout.addWidget(self.input_binary_path)
