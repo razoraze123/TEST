@@ -1,0 +1,20 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Virtual environment directories
+.env
+.venv
+env/
+venv/
+
+# VSCode settings
+.vscode/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Other
+.DS_Store
