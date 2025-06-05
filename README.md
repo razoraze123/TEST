@@ -76,6 +76,13 @@ You can clear the console or save its contents to a log file using the buttons
 provided. The paths to `optipng.exe` and `cwebp.exe` can be changed at any time
 in the **Settings** tab.
 
+### Using the Visual Selector Tab
+Open the **Sélecteur visuel** tab from the sidebar and enter the URL of a
+product page. After the page loads, move the mouse over the web page to
+highlight elements and click one to generate a CSS selector. You can **Copier**
+the selector to the clipboard or **Sauvegarder** it. Saved selectors are stored
+in `selectors.json` at the root of the project.
+
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
 

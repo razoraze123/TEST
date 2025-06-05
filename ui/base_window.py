@@ -280,9 +280,17 @@ class MainWindow(QMainWindow):
         self.btn_scraper = QPushButton("Scraper")
         self.btn_images = QPushButton("Scraping d'image")
         self.btn_optimizer = QPushButton("Optimiser Images")
+        self.btn_selector = QPushButton("Sélecteur visuel")
         self.btn_api = QPushButton("API Flask")
         self.btn_settings = QPushButton("Paramètres")
-        for btn in (self.btn_scraper, self.btn_images, self.btn_optimizer, self.btn_api, self.btn_settings):
+        for btn in (
+            self.btn_scraper,
+            self.btn_images,
+            self.btn_optimizer,
+            self.btn_selector,
+            self.btn_api,
+            self.btn_settings,
+        ):
             btn.setMinimumHeight(40)
             sidebar_layout.addWidget(btn)
 
@@ -295,12 +303,14 @@ class MainWindow(QMainWindow):
         # Pages
         self.page_scraper = self._create_scraper_page()
         self.page_image = self._create_image_page()
+        self.page_selector = self._create_visual_selector_page()
         self.page_optimizer = self._create_optimizer_page()
         self.page_api = self._create_api_page()
         self.page_settings = self._create_settings_page()
 
         self.stack.addWidget(self.page_scraper)
         self.stack.addWidget(self.page_image)
+        self.stack.addWidget(self.page_selector)
         self.stack.addWidget(self.page_optimizer)
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
@@ -308,6 +318,7 @@ class MainWindow(QMainWindow):
         self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper))
         self.btn_images.clicked.connect(lambda: self._show_page(self.page_image))
         self.btn_optimizer.clicked.connect(lambda: self._show_page(self.page_optimizer))
+        self.btn_selector.clicked.connect(lambda: self._show_page(self.page_selector))
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
 
@@ -512,6 +523,11 @@ class MainWindow(QMainWindow):
         self.preview_list.setIconSize(QSize(80, 80))
         layout.addWidget(self.preview_list)
 
+        return page
+
+    def _create_visual_selector_page(self):
+        from ui.visual_selector import VisualSelectorPage
+        page = VisualSelectorPage()
         return page
 
     def _create_optimizer_page(self):
