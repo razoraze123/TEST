@@ -17,6 +17,9 @@ DEFAULTS = {
     "LINKS_FILE_PATH": os.path.join(_DEFAULT_BASE, "liens_clean.txt"),
     "ROOT_FOLDER": "image",
     "THEME": "dark",
+    "WP_DOMAIN": "https://monsite.com",
+    "WP_UPLOAD_PATH": "wp-content/uploads/2025/06",
+    "IMAGE_NAME_PATTERN": "{id}:{variant}-{name}.webp",
 }
 
 
