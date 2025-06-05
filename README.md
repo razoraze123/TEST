@@ -74,6 +74,7 @@ LINKS_FILE_PATH = "/path/to/liens_clean.txt"
 OPTIPNG_PATH = "tools/optimizers/optipng.exe"
 CWEBP_PATH = "tools/optimizers/cwebp.exe"
 ROOT_FOLDER = "image"
+THEME = "dark"
 ```
 
 You can edit this file directly or use the **Settings** page in the GUI which
@@ -88,6 +89,7 @@ updates it automatically. The defaults mirror the previous behaviour:
   Defaults to `BASE_DIR/custom_suffixes.py`.
 * `LINKS_FILE_PATH` – text file listing product URLs. Defaults to
   `BASE_DIR/liens_clean.txt`.
+* `THEME` – either `dark` or `light`. Controls the application appearance.
 
 A minimal template file `custom_suffixes.example.py` is included in the
 repository. Copy it to `custom_suffixes.py` and edit it to provide your own

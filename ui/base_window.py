@@ -317,7 +317,7 @@ class MainWindow(QMainWindow):
         self.sidebar.currentRowChanged.connect(lambda i: self.stack.setCurrentWidget(pages[i]))
 
         # Apply centralized theme
-        apply_theme(self)
+        apply_theme(self, config.THEME)
 
     def _create_scraper_page(self):
         page = QWidget()

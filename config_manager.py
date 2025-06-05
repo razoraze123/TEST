@@ -16,6 +16,7 @@ DEFAULTS = {
     "SUFFIX_FILE_PATH": os.path.join(_DEFAULT_BASE, "custom_suffixes.py"),
     "LINKS_FILE_PATH": os.path.join(_DEFAULT_BASE, "liens_clean.txt"),
     "ROOT_FOLDER": "image",
+    "THEME": "dark",
 }
 
 
