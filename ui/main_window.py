@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
 from ui.base_window import MainWindow
+from ui.style import apply_theme
 
 
 class DashboardWindow(MainWindow):
@@ -92,18 +93,8 @@ class DashboardWindow(MainWindow):
 
         self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
 
-        # Modern dark theme -------------------------------------------
-        self.setStyleSheet(
-            """
-            #Header {background-color: #2d2d2d; color: white;}
-            #Sidebar {background-color: #333; border: none; color: white;}
-            QListWidget::item {padding: 8px; margin: 2px; border-radius: 6px;}
-            QListWidget::item:selected {background: #555;}
-            QFrame[card="true"] {background: #414141; border-radius: 8px; padding: 16px;}
-            QPushButton {background: #555; color: white; border: none; padding: 8px; border-radius: 6px;}
-            QPushButton:hover {background: #666;}
-            """
-        )
+        # Apply centralized theme
+        apply_theme(self)
 
     # ------------------------------------------------------------------
     def _create_dashboard_page(self):

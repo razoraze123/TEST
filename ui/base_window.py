@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
+from ui.style import apply_theme
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
 import config
@@ -325,36 +326,8 @@ class MainWindow(QMainWindow):
         self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
         self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
 
-        # Dark theme
-        self.setStyleSheet(
-            """
-            QWidget {
-                background-color: #121212;
-                color: #f5f5f5;
-                font-size: 14px;
-            }
-            QPushButton {
-                background-color: #1e1e1e;
-                border: 1px solid #333;
-                padding: 8px 12px;
-            }
-            QPushButton:hover {
-                background-color: #2b2b2b;
-            }
-            QLineEdit, QSpinBox {
-                background-color: #1e1e1e;
-                border: 1px solid #333;
-                padding: 4px;
-            }
-            QTextEdit {
-                background-color: #1e1e1e;
-                color: #f5f5f5;
-            }
-            QCheckBox {
-                padding: 2px;
-            }
-            """
-        )
+        # Apply centralized theme
+        apply_theme(self)
 
     def _create_scraper_page(self):
         page = QWidget()
