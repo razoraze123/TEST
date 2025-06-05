@@ -8,17 +8,8 @@ BASE_DIR = os.environ.get(
 
 # Default paths for Chrome driver and binary; can be overridden with
 # CHROME_DRIVER_PATH and CHROME_BINARY_PATH environment variables
-CHROME_DRIVER_PATH = os.environ.get(
-    "CHROME_DRIVER_PATH",
-    os.path.join(
-        BASE_DIR,
-        r"../chromdrivers 137/chromedriver-win64/chromedriver.exe",
-    ),
-)
-CHROME_BINARY_PATH = os.environ.get(
-    "CHROME_BINARY_PATH",
-    os.path.join(BASE_DIR, r"../chromdrivers 137/chrome-win64/chrome.exe"),
-)
+CHROME_DRIVER_PATH = os.environ.get("CHROME_DRIVER_PATH")
+CHROME_BINARY_PATH = os.environ.get("CHROME_BINARY_PATH")
 
 # Default paths for image optimizers
 _OPT_DIR = os.path.join(os.path.dirname(__file__), "tools", "optimizers")

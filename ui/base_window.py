@@ -628,7 +628,7 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(QLabel("Chemin du chromedriver"))
         driver_layout = QHBoxLayout()
-        self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH)
+        self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH or "")
         btn_driver = QPushButton("Parcourir")
         btn_driver.clicked.connect(self._choose_driver_path)
         driver_layout.addWidget(self.input_driver_path)
@@ -637,7 +637,7 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(QLabel("Chemin du navigateur Chrome"))
         binary_layout = QHBoxLayout()
-        self.input_binary_path = QLineEdit(config.CHROME_BINARY_PATH)
+        self.input_binary_path = QLineEdit(config.CHROME_BINARY_PATH or "")
         btn_binary = QPushButton("Parcourir")
         btn_binary.clicked.connect(self._choose_binary_path)
         binary_layout.addWidget(self.input_binary_path)

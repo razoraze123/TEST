@@ -2,7 +2,7 @@
 
 ## Requirements
 - Python 3.10 or newer.
-- Google Chrome and the matching ChromeDriver.
+- Google Chrome. The ChromeDriver binary is downloaded automatically at runtime if `CHROME_DRIVER_PATH` is not provided.
 
 Install the Python dependencies using:
 
@@ -23,8 +23,8 @@ modifying the source. Set the following variables before running the scripts
 (or adjust the defaults in `config.py`):
 
 * `BASE_DIR` – directory used to store generated files
-* `CHROME_DRIVER_PATH` – path to your `chromedriver` executable
-* `CHROME_BINARY_PATH` – path to the Chrome binary
+* `CHROME_DRIVER_PATH` – optional path to a `chromedriver` executable (useful without internet access)
+* `CHROME_BINARY_PATH` – optional path to the Chrome binary
 * `SUFFIX_FILE_PATH` – file containing custom suffixes for `scraper_images.py`
 * `LINKS_FILE_PATH` – text file listing product URLs
 
@@ -32,12 +32,12 @@ Example on Linux/macOS:
 
 ```bash
 export BASE_DIR=/path/to/project
-export CHROME_DRIVER_PATH=/path/to/chromedriver
+export CHROME_DRIVER_PATH=/path/to/chromedriver  # only if you want to skip auto download
 export CHROME_BINARY_PATH=/path/to/chrome
 ```
 
-If these variables are not set, reasonable defaults defined in `config.py` are
-used.
+If `CHROME_DRIVER_PATH` is not set, a driver is downloaded automatically at
+runtime. Other variables fall back to the values defined in `config.py`.
 
 ## Running the Application
 `Application.py` is the unique entry point aggregating the GUI, scraping and optimizer features. Launch the GUI with:
