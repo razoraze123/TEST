@@ -6,3 +6,4 @@ requests
 flask
 
 PySide6
+webdriver-manager

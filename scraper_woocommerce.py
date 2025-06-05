@@ -14,6 +14,7 @@ import config
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
 
 # === CORE CLASS ===
 
@@ -201,9 +202,17 @@ class ScraperCore:
     def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
+        if not driver_path:
+            try:
+                driver_path = ChromeDriverManager().install()
+            except Exception as e:
+                self._log(f"❌ Impossible de télécharger ChromeDriver : {e}")
+                self._log("➡️ Spécifiez CHROME_DRIVER_PATH pour un mode hors-ligne.")
+                return 0, len(ids_selectionnes)
         progress_callback = progress_callback or self._update_progress
         options = webdriver.ChromeOptions()
-        options.binary_location = binary_path
+        if binary_path:
+            options.binary_location = binary_path
         if headless:
             options.add_argument("--headless")
         options.add_argument('--disable-blink-features=AutomationControlled')
@@ -326,10 +335,18 @@ class ScraperCore:
     def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
+        if not driver_path:
+            try:
+                driver_path = ChromeDriverManager().install()
+            except Exception as e:
+                self._log(f"❌ Impossible de télécharger ChromeDriver : {e}")
+                self._log("➡️ Spécifiez CHROME_DRIVER_PATH pour un mode hors-ligne.")
+                return 0, len(ids_selectionnes)
         progress_callback = progress_callback or self._update_progress
         service = Service(executable_path=driver_path)
         options = webdriver.ChromeOptions()
-        options.binary_location = binary_path
+        if binary_path:
+            options.binary_location = binary_path
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option('useAutomationExtension', False)
         options.add_argument("--disable-blink-features=AutomationControlled")
@@ -500,10 +517,18 @@ class ScraperCore:
     ):
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
+        if not driver_path:
+            try:
+                driver_path = ChromeDriverManager().install()
+            except Exception as e:
+                self._log(f"❌ Impossible de télécharger ChromeDriver : {e}")
+                self._log("➡️ Spécifiez CHROME_DRIVER_PATH pour un mode hors-ligne.")
+                return "Erreur téléchargement ChromeDriver"
         progress_callback = progress_callback or self._update_progress
 
         options = webdriver.ChromeOptions()
-        options.binary_location = binary_path
+        if binary_path:
+            options.binary_location = binary_path
         options.add_argument("--disable-blink-features=AutomationControlled")
         options.add_experimental_option("excludeSwitches", ["enable-automation"])
         options.add_experimental_option("useAutomationExtension", False)

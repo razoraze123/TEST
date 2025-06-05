@@ -9,6 +9,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 import importlib.util
 import config
 
@@ -66,17 +67,29 @@ def generate_filename_from_image_url(url, product_title):
     filename = slugify(full_text) + ".webp"
     return filename, full_text
 
-def create_driver():
+def create_driver(driver_path=None, binary_path=config.CHROME_BINARY_PATH):
+    driver_path = driver_path or CHROMEDRIVER_PATH
+    if not driver_path:
+        try:
+            driver_path = ChromeDriverManager().install()
+        except Exception as e:
+            print(f"Impossible de télécharger ChromeDriver : {e}")
+            print("Spécifiez CHROME_DRIVER_PATH pour un mode hors-ligne.")
+            raise
+
     options = Options()
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
     options.add_argument("--headless")
-    service = Service(CHROMEDRIVER_PATH)
+    if binary_path:
+        options.binary_location = binary_path
+    service = Service(driver_path)
     driver = webdriver.Chrome(service=service, options=options)
-    driver.execute_cdp_cmd("Page.addScriptToEvaluateOnNewDocument", {
-        "source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
-    })
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {"source": "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"},
+    )
     return driver
 
 # === LANCEMENT DU SCRAPING ===
