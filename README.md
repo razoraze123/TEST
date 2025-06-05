@@ -153,6 +153,17 @@ filters let you ignore images below a certain size or ratio and restrict the
 source file type. When saving, a SHA-256 hash is calculated for each picture and
 duplicates already present in the target directory are skipped.
 
+### Scraping d’images avancé
+
+Load a product list from an Excel or CSV file containing the columns `ID` and `URL`. Configure the **Lien WordPress** format in the settings by specifying the base upload path, e.g. `https://monsite.com/wp-content/uploads/2025/06/`. When scraping completes, export the resulting table using the dedicated **Exporter** button.
+
+Example snippet of the output table:
+
+```
+ID | Variante | URL concurrent | Nom image          | Lien WordPress
+A1 | Rouge    | https://...    | a1-rouge-face.webp | https://monsite.com/wp-content/uploads/2025/06/a1-rouge-face.webp
+```
+
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
 
