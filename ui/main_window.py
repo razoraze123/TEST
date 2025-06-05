@@ -1,8 +1,16 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,  # added QGridLayout
-    QListWidget, QListWidgetItem, QLabel, QLineEdit,
-    QFrame, QPushButton, QStackedLayout, QStyle
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,  # added QGridLayout
+    QListWidgetItem,
+    QLabel,
+    QLineEdit,
+    QStackedLayout,
+    QStyle,
+    QFrame,
 )
+from ui.components import Sidebar, RoundButton, Card
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 
@@ -46,8 +54,7 @@ class DashboardWindow(MainWindow):
         main_layout.addLayout(body_layout, 1)
 
         # Sidebar menu
-        self.sidebar = QListWidget()
-        self.sidebar.setObjectName("Sidebar")
+        self.sidebar = Sidebar()
         self.sidebar.setFixedWidth(180)
         self.sidebar.setSpacing(4)
 
@@ -104,11 +111,10 @@ class DashboardWindow(MainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
 
         def add_card(text, icon, row, col, callback=None):
-            frame = QFrame()
-            frame.setProperty("card", True)
+            frame = Card()
             frame.setCursor(Qt.PointingHandCursor)
             v = QVBoxLayout(frame)
-            btn = QPushButton(text)
+            btn = RoundButton(text)
             btn.setIcon(self.style().standardIcon(icon))
             btn.setFlat(True)
             v.addStretch(1)

@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
-    QPushButton,
     QSpinBox,
     QDoubleSpinBox,
     QComboBox,
@@ -38,6 +37,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
+from ui.components import RoundButton, Sidebar
 from ui.style import apply_theme
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
@@ -273,32 +273,19 @@ class MainWindow(QMainWindow):
         main_layout = QHBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Sidebar
-        sidebar = QWidget()
-        sidebar.setFixedWidth(150)
-        sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setAlignment(Qt.AlignTop)
-        sidebar_layout.setSpacing(10)
-        sidebar_layout.setContentsMargins(10, 10, 10, 10)
+        # Sidebar using custom widget
+        self.sidebar = Sidebar()
+        for text in [
+            "Scraper",
+            "Scraping d'image",
+            "Optimiser Images",
+            "Sélecteur visuel",
+            "API Flask",
+            "Paramètres",
+        ]:
+            self.sidebar.addItem(text)
 
-        self.btn_scraper = QPushButton("Scraper")
-        self.btn_images = QPushButton("Scraping d'image")
-        self.btn_optimizer = QPushButton("Optimiser Images")
-        self.btn_selector = QPushButton("Sélecteur visuel")
-        self.btn_api = QPushButton("API Flask")
-        self.btn_settings = QPushButton("Paramètres")
-        for btn in (
-            self.btn_scraper,
-            self.btn_images,
-            self.btn_optimizer,
-            self.btn_selector,
-            self.btn_api,
-            self.btn_settings,
-        ):
-            btn.setMinimumHeight(40)
-            sidebar_layout.addWidget(btn)
-
-        main_layout.addWidget(sidebar)
+        main_layout.addWidget(self.sidebar)
 
         # Stacked pages
         self.stack = QStackedLayout()
@@ -319,12 +306,15 @@ class MainWindow(QMainWindow):
         self.stack.addWidget(self.page_api)
         self.stack.addWidget(self.page_settings)
 
-        self.btn_scraper.clicked.connect(lambda: self._show_page(self.page_scraper))
-        self.btn_images.clicked.connect(lambda: self._show_page(self.page_image))
-        self.btn_optimizer.clicked.connect(lambda: self._show_page(self.page_optimizer))
-        self.btn_selector.clicked.connect(lambda: self._show_page(self.page_selector))
-        self.btn_api.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_api))
-        self.btn_settings.clicked.connect(lambda: self.stack.setCurrentWidget(self.page_settings))
+        pages = [
+            self.page_scraper,
+            self.page_image,
+            self.page_optimizer,
+            self.page_selector,
+            self.page_api,
+            self.page_settings,
+        ]
+        self.sidebar.currentRowChanged.connect(lambda i: self.stack.setCurrentWidget(pages[i]))
 
         # Apply centralized theme
         apply_theme(self)
@@ -352,7 +342,7 @@ class MainWindow(QMainWindow):
         self.input_parent = QLineEdit()
         self.input_parent.setPlaceholderText("Dossier parent")
         parent_layout.addWidget(self.input_parent)
-        btn_parent = QPushButton("Parcourir…")
+        btn_parent = RoundButton("Parcourir…")
         btn_parent.clicked.connect(self._choose_parent)
         parent_layout.addWidget(btn_parent)
         folder_layout.addLayout(parent_layout)
@@ -361,7 +351,7 @@ class MainWindow(QMainWindow):
         self.input_folder_name = QLineEdit()
         self.input_folder_name.setPlaceholderText("Nom dossier de résultats")
         name_layout.addWidget(self.input_folder_name)
-        btn_new_folder = QPushButton("Créer dossier")
+        btn_new_folder = RoundButton("Créer dossier")
         btn_new_folder.clicked.connect(self._create_folder)
         name_layout.addWidget(btn_new_folder)
         folder_layout.addLayout(name_layout)
@@ -378,10 +368,10 @@ class MainWindow(QMainWindow):
         liens_layout = QHBoxLayout()
         self.input_liens_file = QLineEdit(self.scraper.liens_id_txt)
         liens_layout.addWidget(self.input_liens_file)
-        btn_liens = QPushButton("Charger fichier")
+        btn_liens = RoundButton("Charger fichier")
         btn_liens.clicked.connect(self._choose_liens_file)
         liens_layout.addWidget(btn_liens)
-        btn_add_link = QPushButton("Ajouter lien")
+        btn_add_link = RoundButton("Ajouter lien")
         btn_add_link.clicked.connect(self._add_single_link)
         liens_layout.addWidget(btn_add_link)
         layout.addLayout(liens_layout)
@@ -401,10 +391,10 @@ class MainWindow(QMainWindow):
         batch_json_layout.addWidget(self.spin_json_batch)
         layout.addLayout(batch_json_layout)
 
-        self.btn_start = QPushButton("Lancer l'exécution")
+        self.btn_start = RoundButton("Lancer l'exécution")
         self.btn_start.clicked.connect(self._on_start_scraper)
         layout.addWidget(self.btn_start)
-        self.btn_stop = QPushButton("Arrêter")
+        self.btn_stop = RoundButton("Arrêter", color="secondary")
         self.btn_stop.clicked.connect(lambda: self._stop_worker(self.scraper_tab))
         layout.addWidget(self.btn_stop)
 
@@ -424,7 +414,7 @@ class MainWindow(QMainWindow):
         self.console_scraper.setReadOnly(True)
         self.console_scraper.setFixedHeight(200)
 
-        btn_clear_console = QPushButton("Vider la console")
+        btn_clear_console = RoundButton("Vider la console", color="secondary")
         btn_clear_console.clicked.connect(self.console_scraper.clear)
         layout.addWidget(btn_clear_console)
         layout.addWidget(self.console_scraper)
@@ -441,7 +431,7 @@ class MainWindow(QMainWindow):
         self.input_img_folder = QLineEdit()
         self.input_img_folder.setPlaceholderText("Dossier images")
         dest_layout.addWidget(self.input_img_folder)
-        btn_dest = QPushButton("Parcourir…")
+        btn_dest = RoundButton("Parcourir…")
         btn_dest.clicked.connect(self._choose_img_folder)
         dest_layout.addWidget(btn_dest)
         layout.addLayout(dest_layout)
@@ -449,7 +439,7 @@ class MainWindow(QMainWindow):
         links_layout = QHBoxLayout()
         self.input_img_links = QLineEdit(self.scraper.liens_id_txt)
         links_layout.addWidget(self.input_img_links)
-        btn_links = QPushButton("Charger fichier")
+        btn_links = RoundButton("Charger fichier")
         btn_links.clicked.connect(self._choose_img_links)
         links_layout.addWidget(btn_links)
         layout.addLayout(links_layout)
@@ -457,7 +447,7 @@ class MainWindow(QMainWindow):
         single_layout = QHBoxLayout()
         self.input_single_url = QLineEdit()
         self.input_single_url.setPlaceholderText("Lien produit")
-        btn_test = QPushButton("Tester lien")
+        btn_test = RoundButton("Tester lien")
         btn_test.clicked.connect(self._on_test_single_image)
         single_layout.addWidget(self.input_single_url)
         single_layout.addWidget(btn_test)
@@ -500,10 +490,10 @@ class MainWindow(QMainWindow):
         type_layout.addWidget(self.combo_type)
         layout.addLayout(type_layout)
 
-        self.btn_start_images = QPushButton("Lancer scraping images")
+        self.btn_start_images = RoundButton("Lancer scraping images")
         self.btn_start_images.clicked.connect(self._on_start_images)
         layout.addWidget(self.btn_start_images)
-        self.btn_stop_images = QPushButton("Arrêter")
+        self.btn_stop_images = RoundButton("Arrêter", color="secondary")
         self.btn_stop_images.clicked.connect(lambda: self._stop_worker(self.images_tab))
         layout.addWidget(self.btn_stop_images)
 
@@ -523,7 +513,7 @@ class MainWindow(QMainWindow):
         self.console_images.setReadOnly(True)
         self.console_images.setFixedHeight(200)
 
-        btn_clear_console_img = QPushButton("Vider la console")
+        btn_clear_console_img = RoundButton("Vider la console", color="secondary")
         btn_clear_console_img.clicked.connect(self.console_images.clear)
         layout.addWidget(btn_clear_console_img)
         layout.addWidget(self.console_images)
@@ -534,7 +524,7 @@ class MainWindow(QMainWindow):
         self.preview_list.setSelectionMode(QListWidget.NoSelection)
         layout.addWidget(self.preview_list)
 
-        btn_save = QPushButton("Enregistrer la sélection")
+        btn_save = RoundButton("Enregistrer la sélection")
         btn_save.clicked.connect(self._save_selected_images)
         layout.addWidget(btn_save)
 
@@ -555,15 +545,15 @@ class MainWindow(QMainWindow):
         self.input_opt_folder = QLineEdit()
         self.input_opt_folder.setPlaceholderText("Dossier à optimiser")
         folder_layout.addWidget(self.input_opt_folder)
-        btn_browse = QPushButton("Parcourir…")
+        btn_browse = RoundButton("Parcourir…")
         btn_browse.clicked.connect(self._choose_opt_folder)
         folder_layout.addWidget(btn_browse)
         layout.addLayout(folder_layout)
 
-        self.btn_start_opt = QPushButton("Lancer l’optimisation")
+        self.btn_start_opt = RoundButton("Lancer l’optimisation")
         self.btn_start_opt.clicked.connect(self._on_start_optimizer)
         layout.addWidget(self.btn_start_opt)
-        self.btn_stop_opt = QPushButton("Arrêter")
+        self.btn_stop_opt = RoundButton("Arrêter", color="secondary")
         self.btn_stop_opt.clicked.connect(lambda: self._stop_worker(self.optimizer_tab))
         layout.addWidget(self.btn_stop_opt)
 
@@ -583,10 +573,10 @@ class MainWindow(QMainWindow):
         self.console_optimizer.setFixedHeight(200)
 
         console_btns = QHBoxLayout()
-        btn_clear = QPushButton("Vider la console")
+        btn_clear = RoundButton("Vider la console", color="secondary")
         btn_clear.clicked.connect(self.console_optimizer.clear)
         console_btns.addWidget(btn_clear)
-        btn_save = QPushButton("Sauvegarder log")
+        btn_save = RoundButton("Sauvegarder log")
         btn_save.clicked.connect(self._save_opt_log)
         console_btns.addWidget(btn_save)
         layout.addLayout(console_btns)
@@ -600,10 +590,10 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        self.btn_activate_flask = QPushButton("Activer Flask")
+        self.btn_activate_flask = RoundButton("Activer Flask")
         self.btn_activate_flask.clicked.connect(self._on_activate_flask)
         layout.addWidget(self.btn_activate_flask)
-        self.btn_stop_api = QPushButton("Arrêter")
+        self.btn_stop_api = RoundButton("Arrêter", color="secondary")
         self.btn_stop_api.clicked.connect(self._stop_worker)
         layout.addWidget(self.btn_stop_api)
 
@@ -619,13 +609,13 @@ class MainWindow(QMainWindow):
         self.input_fiche_folder = QLineEdit()
         self.input_fiche_folder.setPlaceholderText("Dossier des fiches")
         fiches_layout.addWidget(self.input_fiche_folder)
-        btn_browse_fiche = QPushButton("Parcourir")
+        btn_browse_fiche = RoundButton("Parcourir")
         btn_browse_fiche.clicked.connect(self._choose_fiche_folder)
         fiches_layout.addWidget(btn_browse_fiche)
         layout.addLayout(fiches_layout)
 
-        btn_upload = QPushButton("Uploader fiche")
-        btn_list = QPushButton("Lister fiches")
+        btn_upload = RoundButton("Uploader fiche")
+        btn_list = RoundButton("Lister fiches")
         btn_upload.clicked.connect(self._on_upload_fiche)
         btn_list.clicked.connect(self._on_list_fiches)
 
@@ -647,7 +637,7 @@ class MainWindow(QMainWindow):
         self.input_driver_path.setPlaceholderText(
             "Laisser vide pour téléchargement automatique"
         )
-        btn_driver = QPushButton("Parcourir")
+        btn_driver = RoundButton("Parcourir")
         btn_driver.clicked.connect(self._choose_driver_path)
         self.input_driver_path.editingFinished.connect(self._save_config)
         driver_layout.addWidget(self.input_driver_path)
@@ -660,7 +650,7 @@ class MainWindow(QMainWindow):
         self.input_binary_path.setPlaceholderText(
             "Laisser vide si Chrome est dans le PATH"
         )
-        btn_binary = QPushButton("Parcourir")
+        btn_binary = RoundButton("Parcourir")
         btn_binary.clicked.connect(self._choose_binary_path)
         self.input_binary_path.editingFinished.connect(self._save_config)
         binary_layout.addWidget(self.input_binary_path)
@@ -670,7 +660,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("Chemin d'optipng.exe"))
         optipng_layout = QHBoxLayout()
         self.input_optipng_path = QLineEdit(config.OPTIPNG_PATH)
-        btn_optipng = QPushButton("Parcourir…")
+        btn_optipng = RoundButton("Parcourir…")
         btn_optipng.clicked.connect(self._choose_optipng_path)
         self.input_optipng_path.editingFinished.connect(self._save_config)
         optipng_layout.addWidget(self.input_optipng_path)
@@ -680,7 +670,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("Chemin de cwebp.exe"))
         cwebp_layout = QHBoxLayout()
         self.input_cwebp_path = QLineEdit(config.CWEBP_PATH)
-        btn_cwebp = QPushButton("Parcourir…")
+        btn_cwebp = RoundButton("Parcourir…")
         btn_cwebp.clicked.connect(self._choose_cwebp_path)
         self.input_cwebp_path.editingFinished.connect(self._save_config)
         cwebp_layout.addWidget(self.input_cwebp_path)
