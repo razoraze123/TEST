@@ -10,11 +10,30 @@ Install the Python dependencies using:
 pip install -r requirements.txt
 ```
 
+If you plan to use asynchronous scraping, also install the
+`playwright` browsers with:
+
+```bash
+playwright install
+```
+
 ### Quick Start
 
 ```bash
 pip install -r requirements.txt
 python Application.py
+```
+
+### Asynchronous Scraping
+
+The scraping functions can run concurrently using `asyncio` and
+`playwright`. Pass `concurrent=True` to
+`scrap_produits_par_ids`, `scrap_fiches_concurrents` or `ScraperCore.start_scraping`
+to enable this mode. Install the extra dependency and browsers with:
+
+```bash
+pip install playwright
+playwright install
 ```
 
 ## Configuring Paths

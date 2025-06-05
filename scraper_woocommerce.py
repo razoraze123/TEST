@@ -9,6 +9,8 @@ import random
 import requests
 import urllib.request
 from urllib.parse import urlparse
+import asyncio
+from playwright.async_api import async_playwright
 import config
 
 from selenium import webdriver
@@ -144,6 +146,28 @@ class ScraperCore:
     def get_logs(self):
         return "\n".join(self._logs)
 
+    # --- Asynchronous helpers ----------------------------------------
+    async def async_scrape_product(self, browser, url):
+        page = await browser.new_page()
+        await page.goto(url)
+        await asyncio.sleep(random.uniform(2.5, 3.5))
+        html = await page.content()
+        await page.close()
+        return html
+
+    async def async_scrape_images(self, browser, url):
+        page = await browser.new_page()
+        await page.goto(url)
+        await asyncio.sleep(random.uniform(2.5, 3.5))
+        images = await page.query_selector_all(".product-gallery__media img")
+        srcs = []
+        for img in images:
+            src = await img.get_attribute("src")
+            if src:
+                srcs.append(src)
+        await page.close()
+        return srcs
+
     # --- High level orchestration -------------------------------------
     def start_scraping(
         self,
@@ -155,6 +179,7 @@ class ScraperCore:
         batch_size=50,
         progress_callback=None,
         headless=True,
+        concurrent=False,
     ):
         """Run selected scraping sections with progress aggregation."""
         progress_callback = progress_callback or self._update_progress
@@ -174,6 +199,7 @@ class ScraperCore:
                 binary_path,
                 progress_callback=scaled,
                 headless=headless,
+                concurrent=concurrent,
             )
             summary.append(f"Variantes: {ok} OK, {err} erreurs")
             done += 1
@@ -186,6 +212,7 @@ class ScraperCore:
                 binary_path,
                 progress_callback=scaled,
                 headless=headless,
+                concurrent=concurrent,
             )
             summary.append(f"Concurrents: {ok} OK, {err} erreurs")
             done += 1
@@ -199,7 +226,28 @@ class ScraperCore:
         return "\n".join(summary)
 
 # === SCRAPING PRODUITS (VARIANTES) ===
-    def scrap_produits_par_ids(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
+    def scrap_produits_par_ids(
+        self,
+        id_url_map,
+        ids_selectionnes,
+        driver_path=None,
+        binary_path=None,
+        progress_callback=None,
+        should_stop=lambda: False,
+        headless=True,
+        concurrent=False,
+    ):
+        if concurrent:
+            return asyncio.run(
+                self._scrap_produits_par_ids_async(
+                    id_url_map,
+                    ids_selectionnes,
+                    progress_callback,
+                    should_stop,
+                    headless,
+                )
+            )
+
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         if not driver_path:
@@ -331,8 +379,132 @@ class ScraperCore:
         self._log(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
         return n_ok, n_err
 
+    async def _scrap_produits_par_ids_async(
+        self,
+        id_url_map,
+        ids_selectionnes,
+        progress_callback,
+        should_stop,
+        headless,
+    ):
+        progress_callback = progress_callback or self._update_progress
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=headless)
+            tasks = {}
+            for id_produit in ids_selectionnes:
+                if should_stop():
+                    break
+                url = id_url_map.get(id_produit)
+                if not url:
+                    self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
+                    continue
+                task = asyncio.create_task(self.async_scrape_product(browser, url))
+                tasks[task] = (id_produit, url)
+
+            results = []
+            n_ok = 0
+            n_err = 0
+            total = len(tasks)
+            for idx, task in enumerate(asyncio.as_completed(tasks), start=1):
+                id_prod, url = tasks[task]
+                try:
+                    html = await task
+                    results.append((id_prod, html))
+                    n_ok += 1
+                except Exception as e:
+                    self._log(f"❌ Erreur sur {url} → {e}")
+                    n_err += 1
+                progress_callback(int(idx / total * 100))
+
+            await browser.close()
+
+        woocommerce_rows = []
+        for id_produit, html in results:
+            soup = BeautifulSoup(html, "html.parser")
+            try:
+                product_name = soup.find("h1").get_text(strip=True)
+            except Exception:
+                product_name = ""
+            base_sku = re.sub(r"\W+", "-", product_name.lower()).strip("-")[:15].upper()
+            product_price = ""
+            for selector in ["sale-price.text-lg", ".price", ".product-price", ".woocommerce-Price-amount"]:
+                elem = soup.select_one(selector)
+                if elem and elem.text.strip():
+                    match = re.search(r"([0-9]+(?:[\\.,][0-9]{2})?)", elem.text.strip())
+                    if match:
+                        product_price = match.group(1).replace(",", ".")
+                    break
+
+            variant_names = [e.get_text(strip=True) for e in soup.select("label.color-swatch span.sr-only")]
+            nom_dossier = self.clean_name(product_name).replace(" ", "-")
+
+            if len(variant_names) <= 1:
+                woocommerce_rows.append({
+                    "ID Produit": id_produit,
+                    "Type": "simple",
+                    "SKU": base_sku,
+                    "Name": product_name,
+                    "Regular price": product_price,
+                    "Nom du dossier": nom_dossier,
+                })
+                continue
+
+            woocommerce_rows.append({
+                "ID Produit": id_produit,
+                "Type": "variable",
+                "SKU": base_sku,
+                "Name": product_name,
+                "Parent": "",
+                "Attribute 1 name": "Couleur",
+                "Attribute 1 value(s)": " | ".join(variant_names),
+                "Attribute 1 default": variant_names[0] if variant_names else "",
+                "Regular price": "",
+                "Nom du dossier": nom_dossier,
+            })
+
+            for v in variant_names:
+                clean_v = re.sub(r"\W+", "", v).upper()
+                child_sku = f"{base_sku}-{clean_v}"
+                woocommerce_rows.append({
+                    "ID Produit": id_produit,
+                    "Type": "variation",
+                    "SKU": child_sku,
+                    "Name": "",
+                    "Parent": base_sku,
+                    "Attribute 1 name": "Couleur",
+                    "Attribute 1 value(s)": v,
+                    "Regular price": product_price,
+                    "Nom du dossier": nom_dossier,
+                })
+
+        df = pd.DataFrame(woocommerce_rows)
+        df.to_excel(self.fichier_excel, index=False)
+        self._log(f"\n📁 Données sauvegardées dans : {self.fichier_excel}")
+        return n_ok, n_err
+
 # === SCRAPING FICHES CONCURRENTS ===
-    def scrap_fiches_concurrents(self, id_url_map, ids_selectionnes, driver_path=None, binary_path=None, progress_callback=None, should_stop=lambda: False, headless=True):
+    def scrap_fiches_concurrents(
+        self,
+        id_url_map,
+        ids_selectionnes,
+        driver_path=None,
+        binary_path=None,
+        progress_callback=None,
+        should_stop=lambda: False,
+        headless=True,
+        concurrent=False,
+    ):
+        if concurrent:
+            return asyncio.run(
+                self._scrap_fiches_concurrents_async(
+                    id_url_map,
+                    ids_selectionnes,
+                    progress_callback,
+                    should_stop,
+                    headless,
+                )
+            )
+
         driver_path = driver_path or self.chrome_driver_path
         binary_path = binary_path or self.chrome_binary_path
         if not driver_path:
@@ -435,6 +607,92 @@ class ScraperCore:
         df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
         df.to_excel(self.recap_excel_path, index=False)
         driver.quit()
+        self._log("\n🎉 Extraction terminée. Résultats enregistrés dans :")
+        self._log(f"- 📁 Fiches : {self.save_directory}")
+        self._log(f"- 📊 Récapitulatif : {self.recap_excel_path}")
+        return n_ok, n_err
+
+    async def _scrap_fiches_concurrents_async(
+        self,
+        id_url_map,
+        ids_selectionnes,
+        progress_callback,
+        should_stop,
+        headless,
+    ):
+        progress_callback = progress_callback or self._update_progress
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=headless)
+            tasks = {}
+            for id_produit in ids_selectionnes:
+                if should_stop():
+                    break
+                url = id_url_map.get(id_produit)
+                if not url:
+                    self._log(f"❌ ID introuvable dans le fichier : {id_produit}")
+                    continue
+                task = asyncio.create_task(self.async_scrape_product(browser, url))
+                tasks[task] = (id_produit, url)
+
+            results = []
+            n_ok = 0
+            n_err = 0
+            total = len(tasks)
+            for idx, task in enumerate(asyncio.as_completed(tasks), start=1):
+                id_prod, url = tasks[task]
+                try:
+                    html = await task
+                    results.append((id_prod, url, html))
+                    n_ok += 1
+                except Exception as e:
+                    self._log(f"❌ Extraction Échec — {e}")
+                    results.append((id_prod, url, None))
+                    n_err += 1
+                progress_callback(int(idx / total * 100))
+
+            await browser.close()
+
+        os.makedirs(self.save_directory, exist_ok=True)
+        recap_data = []
+        for id_produit, url, html in results:
+            if html is None:
+                recap_data.append(("?", "?", url, "Extraction Échec"))
+                continue
+            soup = BeautifulSoup(html, "html.parser")
+            title_tag = (
+                soup.find("h1", class_="product-single__title")
+                or soup.find("h1", class_="product-info__title")
+                or soup.find("h1")
+            )
+            if not title_tag:
+                recap_data.append(("?", "?", url, "Titre introuvable"))
+                continue
+            title = title_tag.get_text(strip=True)
+            filename = self.clean_filename(title) + ".txt"
+            txt_path = os.path.join(self.save_directory, filename)
+
+            description_div = (
+                soup.find("div", {"id": "product_description"})
+                or (soup.find("div", class_="accordion__content") or {}).find("div", class_="prose")
+                or soup.find("div", class_="prose")
+            )
+            if not description_div:
+                recap_data.append(("?", title, url, "Description introuvable"))
+                continue
+
+            for a in description_div.find_all("a", href=True):
+                text = a.get_text(strip=True)
+                href = a["href"]
+                a.replace_with(f"[{text}]({href})")
+
+            txt_content = f"<h1>{title}</h1>\n\n{description_div}"
+            with open(txt_path, "w", encoding="utf-8") as f:
+                f.write(txt_content)
+
+            recap_data.append((filename, title, url, "Extraction OK"))
+
+        df = pd.DataFrame(recap_data, columns=["Nom du fichier", "H1", "Lien", "Statut"])
+        df.to_excel(self.recap_excel_path, index=False)
         self._log("\n🎉 Extraction terminée. Résultats enregistrés dans :")
         self._log(f"- 📁 Fiches : {self.save_directory}")
         self._log(f"- 📊 Récapitulatif : {self.recap_excel_path}")
