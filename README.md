@@ -19,14 +19,20 @@ python Application.py
 
 ## Configuring Paths
 Paths are read from environment variables so you can customise them without
-modifying the source. Set the following variables before running the scripts
-(or adjust the defaults in `config.py`):
+modifying the source. The defaults are defined in `config.py`:
 
-* `BASE_DIR` – directory used to store generated files
-* `CHROME_DRIVER_PATH` – optional path to a `chromedriver` executable (useful without internet access)
+* `BASE_DIR` – directory used to store generated files. Defaults to the folder
+  containing `config.py`.
+* `CHROME_DRIVER_PATH` – optional path to a `chromedriver` executable (useful
+  without internet access)
 * `CHROME_BINARY_PATH` – optional path to the Chrome binary
-* `SUFFIX_FILE_PATH` – file containing custom suffixes for `scraper_images.py`
-* `LINKS_FILE_PATH` – text file listing product URLs
+* `SUFFIX_FILE_PATH` – file containing custom suffixes for `scraper_images.py`.
+  Defaults to `BASE_DIR/custom_suffixes.py`.
+* `LINKS_FILE_PATH` – text file listing product URLs. Defaults to
+  `BASE_DIR/liens_clean.txt`.
+
+Set the environment variables to override these locations when running the
+scripts.
 
 Example on Linux/macOS:
 

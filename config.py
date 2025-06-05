@@ -3,7 +3,7 @@ import os
 # Default base directory (can be overridden via the BASE_DIR environment variable)
 BASE_DIR = os.environ.get(
     "BASE_DIR",
-    r"C:\\Users\\Lamine\\Desktop\\woocommerce\\code\\CODE POUR BOB",
+    os.path.dirname(os.path.abspath(__file__)),
 )
 
 # Default paths for Chrome driver and binary; can be overridden with
@@ -19,10 +19,10 @@ CWEBP_PATH = os.path.join(_OPT_DIR, "cwebp.exe")
 # Optional configuration for scraper_images.py
 SUFFIX_FILE_PATH = os.environ.get(
     "SUFFIX_FILE_PATH",
-    r"C:\\Users\\Lamine\\Desktop\\woocommerce\\code\\custom_suffixes.py",
+    os.path.join(BASE_DIR, "custom_suffixes.py"),
 )
 LINKS_FILE_PATH = os.environ.get(
     "LINKS_FILE_PATH",
-    r"C:\\Users\\Lamine\\Desktop\\woocommerce\\code\\liens_clean.txt",
+    os.path.join(BASE_DIR, "liens_clean.txt"),
 )
 ROOT_FOLDER = os.environ.get("ROOT_FOLDER", "image")
