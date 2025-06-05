@@ -1,0 +1,8 @@
+1. Ouvrez l'application avec `python Application.py` puis choisissez l'onglet **Sélecteur visuel** dans la barre latérale.
+2. Saisissez l'URL complète de la page produit à analyser et cliquez sur **Ouvrir** pour charger la page dans l'aperçu.
+3. Fermez ou ignorez les pop‑ups éventuels (cookies, inscription, etc.) afin de voir correctement l'élément voulu.
+4. Déplacez la souris sur la page : l'élément survolé est encadré en rouge pour faciliter la sélection.
+5. Cliquez sur l'élément à capturer. Le sélecteur CSS généré apparaît dans le champ prévu.
+6. Utilisez **Copier** pour placer le sélecteur dans le presse‑papiers ou **Sauvegarder** pour l'enregistrer dans le fichier `selectors.json` à la racine du projet.
+7. Répétez l'opération pour chaque site et chaque type d'information à extraire. Les sélecteurs sauvegardés pourront ensuite être réutilisés par les scripts de scraping.
+8. Conseil : vérifiez toujours vos sélecteurs sur plusieurs produits afin d'éviter les erreurs lors du scraping automatisé.
