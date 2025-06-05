@@ -14,7 +14,7 @@ from PySide6.QtCore import (
     QPropertyAnimation,
     QSize,
 )
-from PySide6.QtGui import QColor, QPixmap, QIcon
+from PySide6.QtGui import QPixmap, QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -38,7 +38,7 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect,
 )
 from ui.components import RoundButton, Sidebar, show_success, show_error
-from ui.style import apply_theme
+from ui.style import apply_theme, style_progress_bar
 from scraper_woocommerce import ScraperCore
 from optimizer import ImageOptimizer
 import config
@@ -114,6 +114,7 @@ class TabProgress(QObject):
     def __init__(self, progress_bar, label_time, console, parent=None):
         super().__init__(parent)
         self.progress_bar = progress_bar
+        style_progress_bar(self.progress_bar)
         self.label_time = label_time
         self.console = console
 
@@ -166,12 +167,7 @@ class TabProgress(QObject):
 
         value = int(self.current_progress)
         self.progress_bar.setValue(value)
-        hue = int(value * 1.2)
-        color = QColor.fromHsv(hue, 255, 200).name()
-        self.progress_bar.setStyleSheet(
-            f"QProgressBar {{border:1px solid #444; border-radius:8px; text-align:center; height:25px;}}"
-            f"QProgressBar::chunk {{background-color:{color}; border-radius:8px;}}"
-        )
+        # appearance is static; style applied once in __init__
         now = QTime.currentTime()
         if self.current_worker and value > 0:
             if self.last_progress_time is None:
@@ -401,10 +397,7 @@ class MainWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setFixedHeight(25)
-        self.progress_bar.setStyleSheet(
-            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
-            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
-        )
+        style_progress_bar(self.progress_bar)
         layout.addWidget(self.progress_bar)
         self.label_time = QLabel("")
         layout.addWidget(self.label_time)
@@ -500,10 +493,7 @@ class MainWindow(QMainWindow):
         self.progress_bar_img = QProgressBar()
         self.progress_bar_img.setRange(0, 100)
         self.progress_bar_img.setFixedHeight(25)
-        self.progress_bar_img.setStyleSheet(
-            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
-            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
-        )
+        style_progress_bar(self.progress_bar_img)
         layout.addWidget(self.progress_bar_img)
         self.label_time_img = QLabel("")
         layout.addWidget(self.label_time_img)
@@ -560,10 +550,7 @@ class MainWindow(QMainWindow):
         self.progress_bar_opt = QProgressBar()
         self.progress_bar_opt.setRange(0, 100)
         self.progress_bar_opt.setFixedHeight(25)
-        self.progress_bar_opt.setStyleSheet(
-            "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
-            "QProgressBar::chunk {background-color:#444; border-radius:8px;}"
-        )
+        style_progress_bar(self.progress_bar_opt)
         layout.addWidget(self.progress_bar_opt)
         self.label_time_opt = QLabel("")
         layout.addWidget(self.label_time_opt)
