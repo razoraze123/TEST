@@ -136,7 +136,16 @@ Open the **Sélecteur visuel** tab from the sidebar and enter the URL of a
 product page. After the page loads, move the mouse over the web page to
 highlight elements and click one to generate a CSS selector. You can **Copier**
 the selector to the clipboard or **Sauvegarder** it. Saved selectors are stored
-in `selectors.json` at the root of the project.
+  in `selectors.json` at the root of the project.
+
+### Scraping d’image
+
+The **Scraping d’image** tab now displays a thumbnail preview before files are
+saved. Uncheck any images you do not want and press **Enregistrer la
+sélection** to move the remaining files into the destination folder. Optional
+filters let you ignore images below a certain size or ratio and restrict the
+source file type. When saving, a SHA-256 hash is calculated for each picture and
+duplicates already present in the target directory are skipped.
 
 ### Flask Server (Optional)
 `flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
