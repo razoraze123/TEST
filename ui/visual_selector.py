@@ -10,6 +10,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebChannel import QWebChannel
 
+import logging
+
 import json
 import os
 from urllib.parse import urlparse
@@ -45,10 +47,17 @@ def save_selector(url, selector):
 
 class JSBridge(QObject):
     selectorReceived = Signal(str)
+    hoverReceived = Signal(str)
 
     @Slot(str)
     def selectorSelected(self, selector):
+        logging.info("Selector selected: %s", selector)
         self.selectorReceived.emit(selector)
+
+    @Slot(str)
+    def elementHovered(self, selector):
+        logging.info("Selector hovered: %s", selector)
+        self.hoverReceived.emit(selector)
 
 
 class VisualSelectorPage(QWidget):
@@ -104,6 +113,14 @@ class VisualSelectorPage(QWidget):
             save_selector(url, selector)
 
     def inject_js(self):
+        logging.info("Injecting JavaScript into page")
+
+        js_channel = """
+            new QWebChannel(qt.webChannelTransport, function(channel) {
+                window.pyObj = channel.objects.pyObj;
+            });
+        """
+
         js = """
             (function() {
                 function cssPath(el) {
@@ -129,21 +146,41 @@ class VisualSelectorPage(QWidget):
                     }
                     return path.join(' > ');
                 }
-                document.addEventListener('mouseover', function(e){
-                    e.target.__oldOutline = e.target.style.outline;
-                    e.target.style.outline = '2px solid red';
+
+                function highlight(el) {
+                    el.__oldOutline = el.style.outline;
+                    el.style.outline = '2px solid red';
+                }
+
+                function unhighlight(el) {
+                    el.style.outline = el.__oldOutline || '';
+                }
+
+                document.addEventListener('mouseover', function(e) {
+                    highlight(e.target);
+                    var sel = cssPath(e.target);
+                    console.log('hover', sel);
+                    if (window.pyObj && window.pyObj.elementHovered) {
+                        window.pyObj.elementHovered(sel);
+                    }
                 }, true);
-                document.addEventListener('mouseout', function(e){
-                    e.target.style.outline = e.target.__oldOutline || '';
+
+                document.addEventListener('mouseout', function(e) {
+                    unhighlight(e.target);
                 }, true);
-                document.addEventListener('click', function(e){
+
+                document.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
                     var sel = cssPath(e.target);
+                    console.log('click', sel);
                     if (window.pyObj && window.pyObj.selectorSelected) {
                         window.pyObj.selectorSelected(sel);
                     }
                 }, true);
             })();
         """
-        self.webview.page().runJavaScript(js)
+
+        page = self.webview.page()
+        page.runJavaScript(js_channel)
+        page.runJavaScript(js)
