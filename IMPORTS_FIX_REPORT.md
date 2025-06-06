@@ -17,3 +17,8 @@ Only one issue was found and fixed:
 - **ui/visual_selector.py**: added `import os` to enable the calls to `os.path.join` and `os.path.isfile`.
 
 No other file referenced modules without importing them.
+
+### Rapport de vérification supplémentaire
+
+Un second passage sur l'ensemble des 53 fichiers Python n'a révélé aucun nouvel
+oubli d'import. Aucun changement additionnel n'a été nécessaire.
