@@ -12,6 +12,7 @@ from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineCore import QWebEngineScript
 import PySide6
 
+import os
 import logging
 
 from urllib.parse import urlparse
