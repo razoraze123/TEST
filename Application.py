@@ -11,6 +11,7 @@ import scheduler
 def main():
     db.init_engine(storage.db_path())
     storage.init_db()
+    scheduler.init_scheduler()
     flask_proc = subprocess.Popen(["python", "flask_server.py"])
 
     app = QApplication(sys.argv)

@@ -106,5 +106,10 @@ def toggle_task(task_id: int) -> None:
         session.commit()
 
 
-scheduler.start()
-load_tasks()
+def init_scheduler() -> None:
+    """Start the background scheduler and load persisted tasks."""
+    if scheduler.running:
+        return
+    scheduler.start()
+    load_tasks()
+
