@@ -3,6 +3,14 @@
 Ce module fournit des classes de base pour gérer des opérations
 comptables simples. Les données sont stockées en mémoire mais une
 abstraction prépare l'utilisation d'autres backends comme SQLite ou CSV.
+
+---
+
+Accounting module.
+
+This package offers basic classes to manage simple accounting
+transactions. Data is kept in memory but the abstraction layer allows
+using other backends such as SQLite or CSV.
 """
 
 from .transaction import Transaction

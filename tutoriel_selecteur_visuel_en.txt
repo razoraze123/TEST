@@ -1,0 +1,8 @@
+1. Launch the application with `python Application.py` and open the **Visual selector** tab.
+2. Enter the full product page URL and click **Ouvrir** to load the preview.
+3. Close or ignore any pop-ups (cookies, sign-up...) so you can see the element.
+4. Move the mouse over the page: the hovered element is highlighted in red.
+5. Click the desired element. The generated CSS selector appears in the field.
+6. Use **Copier** to copy the selector to the clipboard or **Sauvegarder** to store it in `selectors.json` at the project root.
+7. Repeat for each site or information type to scrape. Saved selectors can be reused by the scraping scripts.
+8. Tip: always test your selectors on several products to avoid errors when running automated scraping.

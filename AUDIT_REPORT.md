@@ -1,12 +1,14 @@
-# Audit Report
+# Rapport d'audit / Audit Report
 
-## Summary
-- Verified repository structure: includes CLI, GUI, scraping, optimization and Flask API modules with tests.
-- Detected failing tests due to missing PySide6 shared libraries when importing `scraper_woocommerce`.
-- Patched `scraper_woocommerce.py` to load `QImage` conditionally and provide a minimal stub when PySide6 is absent.
-- All tests now pass using `PYTHONPATH=$PWD pytest -q`.
+## Résumé / Summary
+- Structure du dépôt vérifiée : modules CLI, interface graphique, scraping, optimisation et API Flask avec jeux de tests.
+- Les tests échouent si les dépendances comme `pandas` ou `SQLAlchemy` ne sont pas installées.
+- La configuration `pyproject.toml` ne définit pas explicitement les paquets, ce qui empêche `pip install .`.
 
-## Recommendations
-- Package layout is flat; `pip install -e .` fails. Define explicit packages in `pyproject.toml` if distribution is required.
-- Consider adding `pytest-asyncio` to test dependencies to run async tests without warnings.
-- Document the need to set `PYTHONPATH` or install as package when running tests.
+## Correctifs appliqués / Fixes Applied
+- Ajout d'une section `[tool.setuptools.packages.find]` dans `pyproject.toml` pour lister `accounting`, `db`, `plugins` et `ui`.
+- Ajout d'une documentation bilingue (fichiers `README_fr.md` et `README_en.md`).
+
+## Recommandations / Recommendations
+- Installer les dépendances avec `pip install .[test]` puis exécuter les tests avec `PYTHONPATH=$PWD pytest`.
+- Envisager un script de configuration pour préparer l'environnement (bases de données, outils externes).

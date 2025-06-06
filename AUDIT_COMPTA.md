@@ -17,3 +17,25 @@
 - Enrichir les validations de données (formats, bornes) lors de l'import pour prévenir les saisies incohérentes.
 - Prévoir un backend de stockage persistant (SQLite ou CSV) en implémentant `BaseStorage`.
 - Ajouter des tests sur les exports PDF (contenu minimal) afin de sécuriser cette fonctionnalité.
+
+---
+
+# Accounting module audit (English)
+
+## Fixed issues
+- PEP8 normalization across files: import order, long lines removed, trailing whitespace cleaned.
+- Unused imports removed (`timedelta`, `date`).
+- Proper blank lines added before class and function definitions.
+- Error messages simplified in `bank_import` and `reporting`.
+- Function signatures wrapped over multiple lines for readability.
+- Aliases added for types (`date as dt`) to avoid name clashes.
+
+## Robustness and tests
+- Running the dedicated unit tests gives **18 successes**.
+- Code coverage for this subset remains at **93%**.
+- Some deprecation warnings from `fpdf2` appear but do not affect results.
+
+## Future suggestions
+- Strengthen data validation on import to prevent inconsistent entries.
+- Plan for persistent storage backend (SQLite or CSV) by implementing `BaseStorage`.
+- Add tests for PDF exports (minimal content) to secure the feature.
