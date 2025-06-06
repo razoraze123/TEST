@@ -16,6 +16,7 @@ from .categorization import (
     CATEGORIES_KEYWORDS,
 )
 from .reconciliation import suggere_rapprochements, rapprocher
+from .reporting import export_transactions, export_entries
 
 __all__ = [
     "Transaction",
@@ -29,5 +30,7 @@ __all__ = [
     "CATEGORIES_KEYWORDS",
     "suggere_rapprochements",
     "rapprocher",
+    "export_transactions",
+    "export_entries",
 ]
 
