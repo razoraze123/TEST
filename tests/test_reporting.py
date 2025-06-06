@@ -7,6 +7,11 @@ from accounting import (
     JournalEntry,
     export_transactions,
     export_entries,
+    grand_livre,
+    balance,
+    rapport_categorie,
+    export_report_pdf,
+    export_report_csv,
 )
 
 
@@ -41,3 +46,46 @@ def test_export_entries_xlsx(tmp_path):
 def test_export_invalid_extension(tmp_path):
     with pytest.raises(ValueError):
         export_transactions([], tmp_path / "report.txt")
+
+
+def _sample_data():
+    entries = [
+        JournalEntry("1", "701", debit=100.0, date=date(2023, 1, 1)),
+        JournalEntry("2", "602", credit=80.0, date=date(2023, 1, 2)),
+    ]
+    txs = [
+        Transaction(date(2023, 1, 1), "Vente", 100.0, debit="411", credit="701", categorie="Client"),
+        Transaction(date(2023, 1, 2), "Achat", 80.0, debit="602", credit="401", categorie="Fournisseur"),
+    ]
+    ledger_df = grand_livre(entries)
+    balance_df = balance(entries)
+    cat_df = rapport_categorie(txs)
+    return ledger_df, balance_df, cat_df
+
+
+def test_export_report_csv(tmp_path):
+    ledger_df, balance_df, cat_df = _sample_data()
+    folder = tmp_path / "csv"
+    export_report_csv(ledger_df, balance_df, cat_df, folder)
+    ledger_path = folder / "ledger.csv"
+    balance_path = folder / "balance.csv"
+    cat_path = folder / "categories.csv"
+
+    assert ledger_path.exists()
+    assert balance_path.exists()
+    assert cat_path.exists()
+
+    df_bal = pd.read_csv(balance_path)
+    assert "solde" in df_bal.columns
+    df_bal["account_code"] = df_bal["account_code"].astype(str)
+    assert df_bal.loc[df_bal["account_code"] == "701", "solde"].iloc[0] == 100.0
+
+
+def test_export_report_pdf(tmp_path):
+    ledger_df, balance_df, cat_df = _sample_data()
+    path = tmp_path / "report.pdf"
+    export_report_pdf(ledger_df, balance_df, cat_df, path)
+    assert path.exists()
+    with open(path, "rb") as f:
+        header = f.read(4)
+    assert header.startswith(b"%PDF")

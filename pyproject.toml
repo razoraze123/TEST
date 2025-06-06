@@ -11,6 +11,7 @@ dependencies = [
     "openpyxl",
     "requests",
     "flask",
+    "fpdf2",
     "PySide6",
     "webdriver-manager",
     "playwright",
