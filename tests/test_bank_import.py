@@ -1,7 +1,12 @@
 import pandas as pd
 import pytest
 
-from accounting import import_releve, InMemoryStorage, ComptaValidationError
+from accounting import (
+    import_releve,
+    InMemoryStorage,
+    ComptaValidationError,
+    ComptaImportError,
+)
 
 
 def test_import_releve_csv(tmp_path):
@@ -31,3 +36,10 @@ def test_import_releve_missing_col(tmp_path):
     df.to_csv(path, index=False)
     with pytest.raises(ComptaValidationError):
         import_releve(str(path))
+
+
+def test_import_releve_bad_extension(tmp_path):
+    txt = tmp_path / "releve.txt"
+    txt.write_text("dummy")
+    with pytest.raises(ComptaImportError):
+        import_releve(str(txt))
