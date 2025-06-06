@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QCheckBox,
 )
-from ui.components import Sidebar, RoundButton, Card
+from ui.components import Sidebar, RoundButton, Card, show_success, show_error
 from ui.transaction_dialog import TransactionDialog
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -44,6 +44,8 @@ from accounting import (
     suggere_rapprochements,
     rapprocher,
     rapport_par_categorie,
+    export_transactions,
+    export_entries,
 )
 
 logger = logging.getLogger(__name__)
@@ -257,6 +259,9 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.btn_reconcile = RoundButton("Rapprocher")
         self.btn_reconcile.clicked.connect(self._reconcile_transaction)
         btn_layout.addWidget(self.btn_reconcile)
+        self.btn_export = RoundButton("Exporter")
+        self.btn_export.clicked.connect(self._export_journal)
+        btn_layout.addWidget(self.btn_export)
         btn_layout.addStretch(1)
         layout.addLayout(btn_layout)
 
@@ -382,6 +387,34 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
                     self.journal_transactions.remove(tx)
         show_success("Op\u00e9ration supprim\u00e9e", self)
         self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
+    def _export_journal(self):
+        choice, ok = QInputDialog.getItem(
+            self,
+            "Exporter journal",
+            "Donn\u00e9es",
+            ["Transactions", "\u00c9critures"],
+            0,
+            False,
+        )
+        if not ok:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Exporter",
+            filter="Excel (*.xlsx);;CSV (*.csv)",
+        )
+        if not path:
+            return
+        try:
+            if choice == "Transactions":
+                export_transactions(self.journal_transactions, path)
+            else:
+                export_entries(self.journal_entries, path)
+            show_success("Export r\u00e9ussi", self)
+        except Exception as e:
+            show_error(f"Erreur export: {e}", self)
 
     # ------------------------------------------------------------------
     def _reconcile_transaction(self):
