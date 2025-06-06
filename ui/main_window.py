@@ -39,6 +39,9 @@ import config_manager
 import storage
 import logging
 import logger_setup  # noqa: F401  # configure logging
+import reporting
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+import matplotlib.pyplot as plt
 import db
 import scheduler
 from accounting import (
@@ -127,6 +130,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Images avancées", QStyle.SP_DirIcon),
             ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
             ("Optimiseur d'images", QStyle.SP_ComputerIcon),
+            ("Rapports", QStyle.SP_FileDialogInfoView),
             ("API Flask", QStyle.SP_BrowserReload),
             ("Tâches planifiées", QStyle.SP_FileDialogListView),
         ]
@@ -166,6 +170,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_settings = super()._create_settings_page()
         self.page_journal = self._create_journal_page()
         self.page_comptabilite = self._create_comptabilite_page()
+        self.page_reports = self._create_reports_page()
         self.page_compta_help = self._create_compta_help_page()
 
         for p in [
@@ -176,6 +181,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_selector,
             self.page_optimizer,
             self.page_api,
+            self.page_reports,
             self.page_tasks,
             self.page_settings,
             self.page_journal,
@@ -450,6 +456,49 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         layout.addLayout(btn_layout)
 
         return page
+    def _create_reports_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.addWidget(QLabel("Rapports"))
+        self.fig_reports = plt.Figure(figsize=(5,3))
+        self.canvas_reports = FigureCanvasQTAgg(self.fig_reports)
+        layout.addWidget(self.canvas_reports)
+        btn_layout = QHBoxLayout()
+        self.btn_export_csv = RoundButton("Exporter CSV")
+        self.btn_export_csv.clicked.connect(self._export_reports_csv)
+        btn_layout.addWidget(self.btn_export_csv)
+        self.btn_export_pdf = RoundButton("Exporter PDF")
+        self.btn_export_pdf.clicked.connect(self._export_reports_pdf)
+        btn_layout.addWidget(self.btn_export_pdf)
+        layout.addLayout(btn_layout)
+        self._refresh_reports()
+        return page
+
+    def _refresh_reports(self):
+        errors = reporting.error_counts()
+        self.fig_reports.clear()
+        ax = self.fig_reports.add_subplot(111)
+        labels = [e.status for e in errors]
+        values = [e.count for e in errors]
+        if values:
+            ax.bar(labels, values)
+        ax.set_title(f"Total articles: {reporting.total_articles()}")
+        self.canvas_reports.draw()
+
+    def _export_reports_csv(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exporter CSV", "", "CSV (*.csv)")
+        if not path:
+            return
+        import pandas as pd
+        data = [(e.status, e.count) for e in reporting.error_counts()]
+        df = pd.DataFrame(data, columns=["Statut", "Nombre"])
+        df.to_csv(path, index=False)
+
+    def _export_reports_pdf(self):
+        path, _ = QFileDialog.getSaveFileName(self, "Exporter PDF", "", "PDF (*.pdf)")
+        if path:
+            self.fig_reports.savefig(path)
+
 
     # ------------------------------------------------------------------
     def _import_bank_statement(self):
@@ -685,6 +734,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             "Sélecteur visuel": self.page_selector,
             "Optimiseur d'images": self.page_optimizer,
             "API Flask": self.page_api,
+            "Rapports": self.page_reports,
             "Tâches planifiées": self.page_tasks,
             "Journal": self.page_journal,
             "Comptabilité": self.page_comptabilite,
