@@ -25,6 +25,7 @@ class Transaction:
     journal_entry_id: Optional[str] = None
 
     def __post_init__(self) -> None:
+        """Vérifie que ``montant`` est positif et lève une erreur sinon."""
         if self.montant < 0:
             raise ComptaValidationError("Le montant doit être positif")
 
