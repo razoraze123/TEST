@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Optional
-from datetime import date
+from datetime import date as dt
 from uuid import uuid4
 
 
@@ -17,6 +17,5 @@ class JournalEntry:
     debit: float = 0.0
     credit: float = 0.0
     description: Optional[str] = None
-    date: date | None = None
+    date: dt | None = None
     id: str = field(default_factory=lambda: uuid4().hex)
-

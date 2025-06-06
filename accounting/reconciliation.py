@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import List
 
 from .transaction import Transaction
@@ -27,7 +26,9 @@ def suggere_rapprochements(
     Les écritures déjà rapprochées sont ignorées.
     """
 
-    matched_ids = {t.journal_entry_id for t in transactions if t.journal_entry_id}
+    matched_ids = {
+        t.journal_entry_id for t in transactions if t.journal_entry_id
+    }
     suggestions = []
     for entry in entries:
         if entry.id in matched_ids:

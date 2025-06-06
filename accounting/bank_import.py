@@ -8,14 +8,15 @@ import os
 import unicodedata
 from typing import List
 
-logger = logging.getLogger(__name__)
-
 import pandas as pd
 
 from .transaction import Transaction
 from .storage import BaseStorage
 from .categorization import categoriser_automatiquement
 from .errors import ComptaImportError, ComptaValidationError
+
+
+logger = logging.getLogger(__name__)
 
 
 def _norm(text: str) -> str:
@@ -25,7 +26,9 @@ def _norm(text: str) -> str:
     return tmp.lower().strip()
 
 
-def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transaction]:
+def import_releve(
+    path: str, storage: BaseStorage | None = None
+) -> List[Transaction]:
     """Lit un relevé bancaire et retourne une liste de :class:`Transaction`.
 
     Le fichier peut être au format CSV ou Excel. En option, un objet
@@ -48,7 +51,8 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
         raise ComptaImportError(f"Fichier introuvable: {path}") from None
     except Exception as e:  # lecture/parse errors
         logger.exception("Erreur lors de la lecture du fichier %s", path)
-        raise ComptaImportError(f"Erreur lors de la lecture du fichier {path} : {e}") from None
+        msg = f"Erreur lors de la lecture du fichier {path} : {e}"
+        raise ComptaImportError(msg) from None
 
     logger.info("%d lignes lues depuis %s", len(df), path)
 
@@ -58,9 +62,10 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
     missing = [c for c in required if c not in col_map]
     if missing:
         logger.error("Colonnes manquantes: %s", ", ".join(missing))
-        raise ComptaValidationError("Colonnes manquantes : " + ", ".join(missing))
+        msg = ", ".join(missing)
+        raise ComptaValidationError("Colonnes manquantes : " + msg)
 
-    df = df.rename(columns={ col_map[k]: k for k in required })
+    df = df.rename(columns={col_map[k]: k for k in required})
 
     txs: List[Transaction] = []
     for _, row in df.iterrows():
@@ -68,7 +73,8 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
             dt = pd.to_datetime(row["date"]).date()
         except Exception as e:
             logger.exception("Date invalide %s: %s", row.get("date"), e)
-            raise ComptaValidationError(f"Date invalide : {row.get('date')}") from None
+            msg = f"Date invalide : {row.get('date')}"
+            raise ComptaValidationError(msg) from None
         desc = str(row["libelle"]) if not pd.isna(row["libelle"]) else ""
         montant = float(row["montant"])
         type_val = _norm(str(row["type"]))
@@ -86,6 +92,11 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
                 storage.add_transaction(tx)
             except Exception as e:
                 logger.exception("Erreur lors de l'enregistrement: %s", e)
-                raise ComptaImportError(f"Erreur lors de l'enregistrement : {e}") from None
-    logger.info("Import du fichier %s termin\u00e9 : %d lignes trait\u00e9es", path, len(txs))
+                msg = f"Erreur lors de l'enregistrement : {e}"
+                raise ComptaImportError(msg) from None
+    logger.info(
+        "Import du fichier %s termine : %d lignes traitees",
+        path,
+        len(txs),
+    )
     return txs
