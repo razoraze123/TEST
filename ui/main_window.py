@@ -308,6 +308,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ["Date", "Libellé", "Montant", "Débit", "Crédit", "Catégorie", "État"]
         )
         self.table_journal.itemChanged.connect(self._on_cat_changed)
+        style.style_table_widget(self.table_journal, config.THEME)
         layout.addWidget(self.table_journal)
 
         for w in [
@@ -618,6 +619,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     def _toggle_theme(self, state=None):
         theme = "dark" if self.cb_dark_theme.isChecked() else "light"
         apply_theme(self, theme)
+        style.style_table_widget(self.table_journal, theme)
         data = config_manager.load()
         data["THEME"] = theme
         config_manager.save(data)
