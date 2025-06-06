@@ -47,3 +47,48 @@ Lancez l'interface PySide6 avec :
 python Application.py
 ```
 Elle permet d'effectuer le scraping, l'optimisation des images et de consulter les rapports.
+
+### D\u00e9marrage du serveur Flask
+`Application.py` (ou `app.py` selon la version) lance automatiquement
+`flask_server.py` en arri\u00e8re-plan sur le port `5000`. Le serveur se termine
+quand l'interface se ferme.
+
+Pour d\u00e9marrer le serveur manuellement :
+
+```bash
+python flask_server.py
+```
+
+Arr\u00eatez-le avec `Ctrl+C` ou en fermant le processus.
+
+### Surveillance des logs
+Tous les messages sont enregistr\u00e9s dans `logs/app.log`. Utilisez :
+
+```bash
+tail -f logs/app.log
+```
+
+pour suivre l'activit\u00e9 en temps r\u00e9el.
+
+## Microservices Node.js / Go
+Les microservices suppl\u00e9mentaires se trouvent dans `js_modules` et
+`go_modules`.
+
+Pour lancer un service Node.js :
+
+```bash
+cd js_modules/mon_service
+npm install
+npm start    # ou node dist/index.js
+```
+
+Pour un service Go :
+
+```bash
+cd go_modules/mon_service
+go build
+./mon_service
+```
+
+Interrompez-les avec `Ctrl+C` et interagissez via leur API HTTP avec `curl` ou
+l'application principale.
