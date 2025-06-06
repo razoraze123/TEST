@@ -1,4 +1,9 @@
-"""Importation de relevés bancaires au format CSV ou Excel."""
+"""Importation de relevés bancaires au format CSV ou Excel.
+
+---
+
+Import bank statements from CSV or Excel files.
+"""
 
 from __future__ import annotations
 
