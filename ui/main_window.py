@@ -130,6 +130,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.sidebar.add_section("📒  Comptabilité")
         accounting_items = [
             ("Journal", QStyle.SP_FileDialogInfoView),
+            ("Comptabilité", QStyle.SP_FileDialogContentsView),
             ("Paramètres", QStyle.SP_FileDialogDetailedView),
         ]
         for text, icon in accounting_items:
@@ -154,6 +155,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_api = super()._create_api_page()
         self.page_settings = super()._create_settings_page()
         self.page_journal = self._create_journal_page()
+        self.page_comptabilite = self._create_comptabilite_page()
 
         for p in [
             self.page_dashboard,
@@ -165,6 +167,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_api,
             self.page_settings,
             self.page_journal,
+            self.page_comptabilite,
         ]:
             self.stack.addWidget(p)
 
@@ -320,6 +323,74 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             signal = getattr(w, "textChanged", None) or getattr(w, "valueChanged", None) or getattr(w, "dateChanged", None) or getattr(w, "currentIndexChanged", None)
             if signal:
                 signal.connect(self._apply_journal_filters)
+
+        layout.addStretch(1)
+        return page
+
+    # ------------------------------------------------------------------
+    def _create_comptabilite_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        layout.addWidget(QLabel("Comptabilit\u00e9"))
+
+        btn_layout = QHBoxLayout()
+        btn_import = RoundButton("Importer relev\u00e9\u2026")
+        btn_layout.addWidget(btn_import)
+        btn_report = RoundButton("Rapport rapide")
+        btn_layout.addWidget(btn_report)
+        btn_add = RoundButton("Ajouter")
+        btn_layout.addWidget(btn_add)
+        btn_edit = RoundButton("Modifier")
+        btn_layout.addWidget(btn_edit)
+        btn_delete = RoundButton("Supprimer")
+        btn_layout.addWidget(btn_delete)
+        btn_reconcile = RoundButton("Rapprocher")
+        btn_layout.addWidget(btn_reconcile)
+        btn_export = RoundButton("Exporter")
+        btn_layout.addWidget(btn_export)
+        btn_layout.addStretch(1)
+        layout.addLayout(btn_layout)
+
+        filter_layout = QHBoxLayout()
+        filter_start = QDateEdit()
+        filter_start.setCalendarPopup(True)
+        filter_end = QDateEdit()
+        filter_end.setCalendarPopup(True)
+        filter_layout.addWidget(QLabel("Du"))
+        filter_layout.addWidget(filter_start)
+        filter_layout.addWidget(QLabel("au"))
+        filter_layout.addWidget(filter_end)
+        filter_text = QLineEdit()
+        filter_text.setPlaceholderText("Libell\u00e9 contient\u2026")
+        filter_layout.addWidget(filter_text)
+        filter_min = QDoubleSpinBox()
+        filter_min.setDecimals(2)
+        filter_min.setRange(-1e9, 1e9)
+        filter_layout.addWidget(QLabel("Min"))
+        filter_layout.addWidget(filter_min)
+        filter_max = QDoubleSpinBox()
+        filter_max.setDecimals(2)
+        filter_max.setRange(-1e9, 1e9)
+        filter_layout.addWidget(QLabel("Max"))
+        filter_layout.addWidget(filter_max)
+        filter_type = QComboBox()
+        filter_type.addItems(["Tous", "D\u00e9bit", "Cr\u00e9dit"])
+        filter_layout.addWidget(filter_type)
+        filter_category = QComboBox()
+        filter_category.addItem("Toutes")
+        filter_category.addItems(list(CATEGORIES_KEYWORDS.keys()) + ["Autre"])
+        filter_layout.addWidget(filter_category)
+        cb_unreconciled = QCheckBox("Non rapproch\u00e9es")
+        filter_layout.addWidget(cb_unreconciled)
+        filter_layout.addStretch(1)
+        layout.addLayout(filter_layout)
+
+        table = QTableWidget(0, 7)
+        table.setHorizontalHeaderLabels(
+            ["Date", "Libell\u00e9", "Montant", "D\u00e9bit", "Cr\u00e9dit", "Cat\u00e9gorie", "\u00c9tat"]
+        )
+        layout.addWidget(table)
 
         layout.addStretch(1)
         return page
