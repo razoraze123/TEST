@@ -3,8 +3,8 @@ import pandas as pd
 import asyncio
 import pytest
 
-from scraper_woocommerce import ScraperCore
-import scraper_woocommerce
+from scraper_core import ScraperCore
+from plugins import woocommerce as scraper_woocommerce
 
 
 class DummyBrowser:

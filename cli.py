@@ -2,7 +2,8 @@ import argparse
 import os
 import logger_setup  # noqa: F401
 import config
-from scraper_woocommerce import ScraperCore
+import config_manager
+from scraper_core import ScraperCore
 from optimizer import ImageOptimizer
 
 
@@ -58,6 +59,29 @@ def run_resume(args):
     run_scrape(args)
 
 
+def run_plugin(args):
+    if args.list:
+        plugins = _available_plugins()
+        print("\n".join(plugins))
+        return
+    if args.use:
+        data = config_manager.load()
+        data["SCRAPER_PLUGIN"] = args.use
+        config_manager.save(data)
+        print(f"Plugin set to {args.use}")
+        return
+    print(f"Active plugin: {config.SCRAPER_PLUGIN}")
+
+
+def _available_plugins():
+    path = os.path.join(os.path.dirname(__file__), "plugins")
+    mods = []
+    for name in os.listdir(path):
+        if name.endswith(".py") and name not in {"__init__.py", "base.py"}:
+            mods.append(f"plugins.{name[:-3]}")
+    return sorted(mods)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="woocommerce-scraper",
@@ -84,6 +108,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_resume.add_argument("--headless", action="store_true", help="Run Chrome headless")
     p_resume.add_argument("--concurrent", action="store_true", help="Use async scraping")
     p_resume.set_defaults(func=run_resume)
+
+    p_plugin = sub.add_parser("plugin", help="Manage scraping plugins")
+    p_plugin.add_argument("--list", action="store_true", help="List available plugins")
+    p_plugin.add_argument("--use", metavar="MODULE", help="Activate plugin module")
+    p_plugin.set_defaults(func=run_plugin)
 
     return parser
 

@@ -40,6 +40,7 @@ import logger_setup  # noqa: F401  # configure logging
 import storage
 import db
 from pathlib import Path
+from .base import BaseScraper
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -48,7 +49,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 # === CORE CLASS ===
 
-class ScraperCore:
+class WooCommerceScraper(BaseScraper):
     """Centralise configuration and scraping helpers."""
 
     def __init__(self, base_dir=config.BASE_DIR,

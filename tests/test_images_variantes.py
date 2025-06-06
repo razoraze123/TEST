@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from scraper_woocommerce import ScraperCore
+from scraper_core import ScraperCore
 
 
 class DummySpan:
