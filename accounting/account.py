@@ -26,4 +26,3 @@ class Account:
         debit = sum(e.debit for e in self.entries)
         credit = sum(e.credit for e in self.entries)
         return debit - credit
-

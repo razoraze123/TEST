@@ -70,4 +70,3 @@ class InMemoryStorage(BaseStorage):
     def list_entries(self) -> List[JournalEntry]:
         """Retourne la liste des écritures enregistrées."""
         return list(self._entries)
-

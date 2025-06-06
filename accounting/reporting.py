@@ -13,12 +13,13 @@ import pandas as pd
 
 from fpdf import FPDF
 
-logger = logging.getLogger(__name__)
-
 from .transaction import Transaction
 from .journal_entry import JournalEntry
 from .categorization import rapport_par_categorie
 from .errors import ComptaExportError
+
+
+logger = logging.getLogger(__name__)
 
 
 def _save_dataframe(df: pd.DataFrame, path: str) -> None:
@@ -34,16 +35,21 @@ def _save_dataframe(df: pd.DataFrame, path: str) -> None:
         func(path, index=False)
     except Exception as e:
         logger.exception("Erreur lors de l'export du fichier %s", path)
-        raise ComptaExportError(f"Erreur lors de l'export du fichier {path}: {e}") from None
+        msg = f"Erreur lors de l'export du fichier {path}: {e}"
+        raise ComptaExportError(msg) from None
 
 
-def export_transactions(transactions: Iterable[Transaction], path: str) -> None:
+def export_transactions(
+    transactions: Iterable[Transaction], path: str
+) -> None:
     """Exporte une liste de :class:`Transaction` vers un fichier."""
     df = pd.DataFrame([asdict(tx) for tx in transactions])
     _save_dataframe(df, path)
 
 
-def export_entries(entries: Iterable[JournalEntry], path: str) -> None:
+def export_entries(
+    entries: Iterable[JournalEntry], path: str
+) -> None:
     """Exporte une liste de :class:`JournalEntry` vers un fichier."""
     df = pd.DataFrame([asdict(e) for e in entries])
     _save_dataframe(df, path)
@@ -61,14 +67,19 @@ def balance(entries: Iterable[JournalEntry]) -> pd.DataFrame:
     """Calcule la balance des comptes."""
     df = pd.DataFrame([asdict(e) for e in entries])
     if df.empty:
-        return pd.DataFrame(columns=["account_code", "debit", "credit", "solde"])
+        return pd.DataFrame(
+            columns=["account_code", "debit", "credit", "solde"]
+        )
     grouped = df.groupby("account_code").agg({"debit": "sum", "credit": "sum"})
     grouped["solde"] = grouped["debit"] - grouped["credit"]
-    return grouped.reset_index().sort_values("account_code").reset_index(drop=True)
+    grouped = grouped.reset_index().sort_values("account_code")
+    return grouped.reset_index(drop=True)
 
 
 def rapport_categorie(
-    transactions: Iterable[Transaction], start: date | None = None, end: date | None = None
+    transactions: Iterable[Transaction],
+    start: date | None = None,
+    end: date | None = None,
 ) -> pd.DataFrame:
     """Rapport des montants par catégorie."""
     totals = rapport_par_categorie(list(transactions), start, end)
@@ -94,7 +105,10 @@ def _add_table(pdf: FPDF, df: pd.DataFrame) -> None:
 
 
 def export_report_pdf(
-    ledger_df: pd.DataFrame, balance_df: pd.DataFrame, cat_df: pd.DataFrame, path: str
+    ledger_df: pd.DataFrame,
+    balance_df: pd.DataFrame,
+    cat_df: pd.DataFrame,
+    path: str,
 ) -> None:
     """Exporte un rapport complet (grand livre, balance, catégories) en PDF."""
     try:
@@ -117,11 +131,15 @@ def export_report_pdf(
         pdf.output(path)
     except Exception as e:
         logger.exception("Erreur lors de l'export PDF %s", path)
-        raise ComptaExportError(f"Erreur lors de l'export PDF {path}: {e}") from None
+        msg = f"Erreur lors de l'export PDF {path}: {e}"
+        raise ComptaExportError(msg) from None
 
 
 def export_report_csv(
-    ledger_df: pd.DataFrame, balance_df: pd.DataFrame, cat_df: pd.DataFrame, folder: str
+    ledger_df: pd.DataFrame,
+    balance_df: pd.DataFrame,
+    cat_df: pd.DataFrame,
+    folder: str,
 ) -> None:
     """Exporte les trois rapports au format CSV dans le dossier donné."""
     os.makedirs(folder, exist_ok=True)
@@ -131,5 +149,6 @@ def export_report_csv(
         cat_df.to_csv(os.path.join(folder, "categories.csv"), index=False)
     except Exception as e:
         logger.exception("Erreur lors de l'export CSV dans %s", folder)
-        raise ComptaExportError(f"Erreur lors de l'export CSV dans {folder}: {e}") from None
-
+        raise ComptaExportError(
+            f"Erreur lors de l'export CSV dans {folder}: {e}"
+        ) from None

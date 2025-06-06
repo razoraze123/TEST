@@ -3,19 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date as dt
 from typing import Optional
 from uuid import uuid4
 
 from .errors import ComptaValidationError
 
 
-
 @dataclass
 class Transaction:
     """Représente une opération comptable de base."""
 
-    date: date
+    date: dt
     description: str
     montant: float
     debit: str
@@ -28,4 +27,3 @@ class Transaction:
         """Vérifie que ``montant`` est positif et lève une erreur sinon."""
         if self.montant < 0:
             raise ComptaValidationError("Le montant doit être positif")
-

@@ -12,4 +12,3 @@ class ComptaValidationError(ComptaError):
 
 class ComptaExportError(ComptaError):
     """Erreur lors de l'export de données."""
-

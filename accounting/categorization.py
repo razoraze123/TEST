@@ -28,7 +28,9 @@ def categoriser_automatiquement(tx: Transaction) -> str:
 
 
 def rapport_par_categorie(
-    transactions: List[Transaction], start: date | None = None, end: date | None = None
+    transactions: List[Transaction],
+    start: date | None = None,
+    end: date | None = None,
 ) -> Dict[str, float]:
     """Retourne le total des montants par catégorie."""
     totaux: Dict[str, float] = {}
