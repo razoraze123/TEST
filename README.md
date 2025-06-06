@@ -240,6 +240,9 @@ EOF
 
 Future versions of the CLI and HTTP API will expose similar search features.
 
+### Using the Rapports Page
+Open the **Rapports** page from the sidebar to visualise scraping statistics such as article totals, error counts and batch progression. Charts are generated with Matplotlib and you can export the data to CSV or PDF.
+
 ## Utilisation de l’onglet Comptabilité
 
 Ouvrez l’onglet **Comptabilité** depuis la barre latérale pour gérer vos
