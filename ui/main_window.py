@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QCheckBox,
     QTextEdit,
+    QSystemTrayIcon,
 )
 from ui.components import Sidebar, RoundButton, Card, show_success, show_error
 from ui.transaction_dialog import TransactionDialog
@@ -37,6 +38,8 @@ import config
 import config_manager
 import logging
 import logger_setup  # noqa: F401  # configure logging
+import db
+import scheduler
 from accounting import (
     import_releve,
     Transaction,
@@ -73,6 +76,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.journal_entries: list[JournalEntry] = []
         self.filtered_transactions: list[Transaction] = []
         super().__init__()
+        self.tray_icon = QSystemTrayIcon(self.style().standardIcon(QStyle.SP_ComputerIcon), self)
+        self.tray_icon.show()
 
     # ------------------------------------------------------------------
     def _setup_ui(self):
@@ -122,6 +127,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
             ("Optimiseur d'images", QStyle.SP_ComputerIcon),
             ("API Flask", QStyle.SP_BrowserReload),
+            ("Tâches planifiées", QStyle.SP_FileDialogListView),
         ]
         for text, icon in ecommerce_items:
             it = QListWidgetItem(self.style().standardIcon(icon), text)
@@ -155,6 +161,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_selector = super()._create_visual_selector_page()
         self.page_optimizer = super()._create_optimizer_page()
         self.page_api = super()._create_api_page()
+        self.page_tasks = self._create_tasks_page()
         self.page_settings = super()._create_settings_page()
         self.page_journal = self._create_journal_page()
         self.page_comptabilite = self._create_comptabilite_page()
@@ -168,6 +175,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_selector,
             self.page_optimizer,
             self.page_api,
+            self.page_tasks,
             self.page_settings,
             self.page_journal,
             self.page_comptabilite,
@@ -419,6 +427,29 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         return page
 
     # ------------------------------------------------------------------
+    def _create_tasks_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        layout.addWidget(QLabel("Tâches planifiées"))
+
+        self.table_tasks = QTableWidget(0, 3)
+        self.table_tasks.setHorizontalHeaderLabels(["Nom", "Date", "Statut"])
+        layout.addWidget(self.table_tasks)
+
+        btn_layout = QHBoxLayout()
+        self.btn_toggle_task = RoundButton("Activer/Désactiver")
+        self.btn_toggle_task.clicked.connect(self._toggle_selected_task)
+        btn_layout.addWidget(self.btn_toggle_task)
+        self.btn_delete_task = RoundButton("Supprimer")
+        self.btn_delete_task.clicked.connect(self._delete_selected_task)
+        btn_layout.addWidget(self.btn_delete_task)
+        btn_layout.addStretch(1)
+        layout.addLayout(btn_layout)
+
+        return page
+
+    # ------------------------------------------------------------------
     def _import_bank_statement(self):
         path, _ = QFileDialog.getOpenFileName(
             self,
@@ -652,6 +683,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             "Sélecteur visuel": self.page_selector,
             "Optimiseur d'images": self.page_optimizer,
             "API Flask": self.page_api,
+            "Tâches planifiées": self.page_tasks,
             "Journal": self.page_journal,
             "Comptabilité": self.page_comptabilite,
             "Paramètres": self.page_settings,
@@ -660,6 +692,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         page = page_map.get(text)
         if page:
             self.stack.setCurrentWidget(page)
+            if page is self.page_tasks:
+                self._refresh_tasks()
 
     # ------------------------------------------------------------------
     def _toggle_theme(self, state=None):
@@ -670,3 +704,38 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         data["THEME"] = theme
         config_manager.save(data)
         config.reload()
+
+    # ------------------------------------------------------------------
+    def show_notification(self, message: str) -> None:
+        self.tray_icon.showMessage("Tâche planifiée", message)
+
+    # ------------------------------------------------------------------
+    def _refresh_tasks(self) -> None:
+        from db.models import ScheduledTask
+        with db.SessionLocal() as session:
+            tasks = session.query(ScheduledTask).order_by(ScheduledTask.scheduled_for).all()
+        self._tasks = tasks
+        self.table_tasks.setRowCount(len(tasks))
+        for i, t in enumerate(tasks):
+            self.table_tasks.setItem(i, 0, QTableWidgetItem(t.name))
+            self.table_tasks.setItem(i, 1, QTableWidgetItem(str(t.scheduled_for)))
+            status = "active" if t.status == "active" else "disabled"
+            self.table_tasks.setItem(i, 2, QTableWidgetItem(status))
+
+    # ------------------------------------------------------------------
+    def _toggle_selected_task(self) -> None:
+        indexes = self.table_tasks.selectionModel().selectedRows()
+        for idx in indexes:
+            if 0 <= idx.row() < len(getattr(self, "_tasks", [])):
+                task = self._tasks[idx.row()]
+                scheduler.toggle_task(task.id)
+        self._refresh_tasks()
+
+    # ------------------------------------------------------------------
+    def _delete_selected_task(self) -> None:
+        indexes = self.table_tasks.selectionModel().selectedRows()
+        for idx in sorted(indexes, key=lambda x: x.row(), reverse=True):
+            if 0 <= idx.row() < len(getattr(self, "_tasks", [])):
+                task = self._tasks[idx.row()]
+                scheduler.remove_task(task.id)
+        self._refresh_tasks()

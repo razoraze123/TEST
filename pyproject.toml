@@ -16,6 +16,7 @@ dependencies = [
     "webdriver-manager",
     "playwright",
     "SQLAlchemy",
+    "apscheduler",
 ]
 
 [project.optional-dependencies]
