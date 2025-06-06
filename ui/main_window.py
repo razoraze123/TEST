@@ -32,7 +32,7 @@ from ui.components import (
     show_error,
 )
 from ui.transaction_dialog import TransactionDialog
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPropertyAnimation
 from PySide6.QtGui import QIcon
 from pathlib import Path
 import tomllib
