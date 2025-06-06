@@ -23,6 +23,7 @@ DEFAULTS = {
     "WP_DOMAIN": "https://monsite.com",
     "WP_UPLOAD_PATH": "wp-content/uploads/2025/06",
     "IMAGE_NAME_PATTERN": "{id}:{variant}-{name}.webp",
+    "SCRAPER_PLUGIN": "plugins.woocommerce",
 }
 
 

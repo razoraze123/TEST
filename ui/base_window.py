@@ -39,10 +39,11 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QGraphicsOpacityEffect,
 )
+from pathlib import Path
 import pandas as pd
 from ui.components import RoundButton, Sidebar, show_success, show_error
 from ui.style import apply_theme, style_progress_bar
-from scraper_woocommerce import ScraperCore
+from scraper_core import ScraperCore
 from optimizer import ImageOptimizer
 import config
 import config_manager
@@ -697,6 +698,16 @@ class MainWindow(QMainWindow):
         layout = QVBoxLayout(page)
         layout.setAlignment(Qt.AlignTop)
 
+        layout.addWidget(QLabel("Plateforme de scraping"))
+        plugin_layout = QHBoxLayout()
+        self.combo_plugin = QComboBox()
+        for mod in self._available_plugins():
+            self.combo_plugin.addItem(mod)
+        self.combo_plugin.setCurrentText(config.SCRAPER_PLUGIN)
+        self.combo_plugin.currentTextChanged.connect(self._save_config)
+        plugin_layout.addWidget(self.combo_plugin)
+        layout.addLayout(plugin_layout)
+
         layout.addWidget(QLabel("Chemin du chromedriver (optionnel)"))
         driver_layout = QHBoxLayout()
         self.input_driver_path = QLineEdit(config.CHROME_DRIVER_PATH or "")
@@ -968,6 +979,14 @@ class MainWindow(QMainWindow):
             with open(path, "w", encoding="utf-8") as f:
                 f.write(self.console_optimizer.toPlainText())
 
+    def _available_plugins(self):
+        plugins_dir = Path(__file__).resolve().parents[1] / "plugins"
+        names = []
+        for p in plugins_dir.glob("*.py"):
+            if p.name not in {"__init__.py", "base.py"}:
+                names.append(f"plugins.{p.stem}")
+        return sorted(names)
+
     def _export_adv_table(self):
         if not hasattr(self, "adv_df") or self.adv_df is None or self.adv_df.empty:
             return
@@ -994,6 +1013,7 @@ class MainWindow(QMainWindow):
             "CHROME_BINARY_PATH": self.input_binary_path.text().strip() or None,
             "OPTIPNG_PATH": self.input_optipng_path.text().strip() or config.OPTIPNG_PATH,
             "CWEBP_PATH": self.input_cwebp_path.text().strip() or config.CWEBP_PATH,
+            "SCRAPER_PLUGIN": self.combo_plugin.currentText(),
         })
         config_manager.save(data)
         config.reload()
