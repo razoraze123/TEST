@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import (
     QPushButton,
     QListWidget,
+    QListWidgetItem,
     QFrame,
     QGraphicsDropShadowEffect,
     QWidget,
