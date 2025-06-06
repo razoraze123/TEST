@@ -426,7 +426,6 @@ class WooCommerceScraper(BaseScraper):
                     base_sku,
                     product_price if len(variant_names) <= 1 else "",
                     nom_dossier,
-                    self.base_dir,
                 )
 
                 if len(variant_names) <= 1:
@@ -443,7 +442,6 @@ class WooCommerceScraper(BaseScraper):
                         base_sku,
                         "",
                         product_price,
-                        self.base_dir,
                     )
                     continue
 
@@ -479,7 +477,6 @@ class WooCommerceScraper(BaseScraper):
                         child_sku,
                         v,
                         product_price,
-                        self.base_dir,
                     )
 
             except Exception as e:
@@ -570,7 +567,6 @@ class WooCommerceScraper(BaseScraper):
                 base_sku,
                 product_price if len(variant_names) <= 1 else "",
                 nom_dossier,
-                self.base_dir,
             )
 
             if len(variant_names) <= 1:
@@ -587,7 +583,6 @@ class WooCommerceScraper(BaseScraper):
                     base_sku,
                     "",
                     product_price,
-                    self.base_dir,
                 )
                 continue
 
@@ -623,7 +618,6 @@ class WooCommerceScraper(BaseScraper):
                     child_sku,
                     v,
                     product_price,
-                    self.base_dir,
                 )
 
         df = pd.DataFrame(woocommerce_rows)
@@ -757,7 +751,6 @@ class WooCommerceScraper(BaseScraper):
                     url,
                     txt_path,
                     "OK",
-                    self.base_dir,
                 )
                 recap_data.append((filename, title, url, "Extraction OK"))
                 n_ok += 1
@@ -769,7 +762,6 @@ class WooCommerceScraper(BaseScraper):
                     url,
                     "",
                     "Erreur",
-                    self.base_dir,
                 )
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 n_err += 1
@@ -843,7 +835,6 @@ class WooCommerceScraper(BaseScraper):
                     url,
                     "",
                     "Erreur",
-                    self.base_dir,
                 )
                 recap_data.append(("?", "?", url, "Extraction Échec"))
                 continue
@@ -860,7 +851,6 @@ class WooCommerceScraper(BaseScraper):
                     url,
                     "",
                     "Titre introuvable",
-                    self.base_dir,
                 )
                 recap_data.append(("?", "?", url, "Titre introuvable"))
                 continue
@@ -880,7 +870,6 @@ class WooCommerceScraper(BaseScraper):
                     url,
                     "",
                     "Description introuvable",
-                    self.base_dir,
                 )
                 recap_data.append(("?", title, url, "Description introuvable"))
                 continue
@@ -900,7 +889,6 @@ class WooCommerceScraper(BaseScraper):
                 url,
                 txt_path,
                 "OK",
-                self.base_dir,
             )
             recap_data.append((filename, title, url, "Extraction OK"))
 
