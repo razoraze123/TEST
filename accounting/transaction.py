@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
+from typing import Optional
+from uuid import uuid4
 
 
 
@@ -17,6 +19,8 @@ class Transaction:
     debit: str
     credit: str
     categorie: str = "Autre"
+    id: str = field(default_factory=lambda: uuid4().hex)
+    journal_entry_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.montant < 0:

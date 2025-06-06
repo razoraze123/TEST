@@ -43,3 +43,16 @@ dans le libellé pour déterminer la catégorie :
 
 
 Pour plus de détails sur l'import des relevés et l'utilisation des filtres du journal, consultez le fichier [HELP.md](HELP.md).
+
+## Rapprochement bancaire
+
+Le module propose un mécanisme simple pour l'appariement entre
+les transactions importées et les écritures internes du journal.
+
+La fonction `suggere_rapprochements` recherche, pour une transaction
+donnée, les écritures dont le montant est identique et dont la date est
+proche (±3 jours par défaut). Les écritures déjà associées à une autre
+transaction sont ignorées. Une fois le bon élément trouvé, la fonction
+`rapprocher` assigne l'identifiant de l'écriture à la transaction. Une
+transaction possédant un champ `journal_entry_id` est considérée comme
+« rapprochée » et peut être filtrée dans l'interface graphique.
