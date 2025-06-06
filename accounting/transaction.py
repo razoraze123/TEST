@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
+
 
 
 @dataclass
@@ -16,6 +16,7 @@ class Transaction:
     montant: float
     debit: str
     credit: str
+    categorie: str = "Autre"
 
     def __post_init__(self) -> None:
         if self.montant < 0:

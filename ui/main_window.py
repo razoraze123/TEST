@@ -32,7 +32,12 @@ import config
 import config_manager
 import logging
 import logger_setup  # noqa: F401  # configure logging
-from accounting import import_releve, Transaction
+from accounting import (
+    import_releve,
+    Transaction,
+    CATEGORIES_KEYWORDS,
+    rapport_par_categorie,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +60,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     def __init__(self, user_name="Utilisateur"):
         self.user_name = user_name
         self.journal_transactions: list[Transaction] = []
+        self.filtered_transactions: list[Transaction] = []
         super().__init__()
 
     # ------------------------------------------------------------------
@@ -228,6 +234,9 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.btn_import_tx = RoundButton("Importer relevé…")
         self.btn_import_tx.clicked.connect(self._import_bank_statement)
         btn_layout.addWidget(self.btn_import_tx)
+        self.btn_report = RoundButton("Rapport rapide")
+        self.btn_report.clicked.connect(self._show_report)
+        btn_layout.addWidget(self.btn_report)
         btn_layout.addStretch(1)
         layout.addLayout(btn_layout)
 
@@ -257,13 +266,18 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.filter_type = QComboBox()
         self.filter_type.addItems(["Tous", "Débit", "Crédit"])
         filter_layout.addWidget(self.filter_type)
+        self.filter_category = QComboBox()
+        self.filter_category.addItem("Toutes")
+        self.filter_category.addItems(list(CATEGORIES_KEYWORDS.keys()) + ["Autre"])
+        filter_layout.addWidget(self.filter_category)
         filter_layout.addStretch(1)
         layout.addLayout(filter_layout)
 
-        self.table_journal = QTableWidget(0, 5)
+        self.table_journal = QTableWidget(0, 6)
         self.table_journal.setHorizontalHeaderLabels(
-            ["Date", "Libellé", "Montant", "Débit", "Crédit"]
+            ["Date", "Libellé", "Montant", "Débit", "Crédit", "Catégorie"]
         )
+        self.table_journal.itemChanged.connect(self._on_cat_changed)
         layout.addWidget(self.table_journal)
 
         for w in [
@@ -273,6 +287,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.filter_min,
             self.filter_max,
             self.filter_type,
+            self.filter_category,
         ]:
             signal = getattr(w, "textChanged", None) or getattr(w, "valueChanged", None) or getattr(w, "dateChanged", None) or getattr(w, "currentIndexChanged", None)
             if signal:
@@ -315,6 +330,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         min_val = self.filter_min.value()
         max_val = self.filter_max.value()
         type_val = self.filter_type.currentText()
+        cat_val = self.filter_category.currentText()
 
         filtered = []
         for tx in txs:
@@ -332,15 +348,42 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
                 continue
             if type_val == "Cr\u00e9dit" and not tx.credit:
                 continue
+            if cat_val != "Toutes" and tx.categorie != cat_val:
+                continue
             filtered.append(tx)
 
+        self.table_journal.blockSignals(True)
         self.table_journal.setRowCount(len(filtered))
+        self.filtered_transactions = filtered
         for i, tx in enumerate(filtered):
             self.table_journal.setItem(i, 0, QTableWidgetItem(str(tx.date)))
             self.table_journal.setItem(i, 1, QTableWidgetItem(tx.description))
             self.table_journal.setItem(i, 2, QTableWidgetItem(f"{tx.montant:.2f}"))
             self.table_journal.setItem(i, 3, QTableWidgetItem(tx.debit))
             self.table_journal.setItem(i, 4, QTableWidgetItem(tx.credit))
+            item_cat = QTableWidgetItem(tx.categorie)
+            item_cat.setFlags(item_cat.flags() | Qt.ItemIsEditable)
+            self.table_journal.setItem(i, 5, item_cat)
+        self.table_journal.blockSignals(False)
+
+    # ------------------------------------------------------------------
+    def _on_cat_changed(self, item):
+        if item.column() != 5:
+            return
+        row = item.row()
+        if 0 <= row < len(getattr(self, "filtered_transactions", [])):
+            self.filtered_transactions[row].categorie = item.text()
+
+    # ------------------------------------------------------------------
+    def _show_report(self):
+        start = self.filter_start.date().toPython() if self.filter_start.date().isValid() else None
+        end = self.filter_end.date().toPython() if self.filter_end.date().isValid() else None
+        totals = rapport_par_categorie(self.journal_transactions, start, end)
+        if not totals:
+            QMessageBox.information(self, "Rapport", "Aucune transaction")
+            return
+        lines = [f"{cat}: {total:.2f}" for cat, total in totals.items()]
+        QMessageBox.information(self, "Rapport", "\n".join(lines))
 
     # ------------------------------------------------------------------
     def apply_responsive(self, values):
