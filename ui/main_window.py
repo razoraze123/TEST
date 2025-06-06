@@ -31,7 +31,10 @@ from ui.responsive import ResponsiveMixin
 import config
 import config_manager
 import logging
+import logger_setup  # noqa: F401  # configure logging
 from accounting import import_releve, Transaction
+
+logger = logging.getLogger(__name__)
 
 
 def _get_project_info():
@@ -288,12 +291,18 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         )
         if not path:
             return
+        logger.info("D\u00e9but import du fichier %s", path)
         try:
             self.journal_transactions = import_releve(path)
         except Exception as e:
-            logging.exception("Erreur import relev\u00e9")
+            logger.exception("Erreur lors de l'import du relev\u00e9 %s", path)
             QMessageBox.critical(self, "Erreur d'import", str(e))
             return
+        logger.info(
+            "Import du fichier %s termin\u00e9 : %d lignes trait\u00e9es",
+            path,
+            len(self.journal_transactions),
+        )
         self._apply_journal_filters()
 
     # ------------------------------------------------------------------

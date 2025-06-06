@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import logging
+import logger_setup  # noqa: F401  # configure logging
 import os
 import unicodedata
 from typing import List
+
+logger = logging.getLogger(__name__)
 
 import pandas as pd
 
@@ -27,6 +30,7 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
     :class:`BaseStorage` peut être passé pour enregistrer automatiquement
     les transactions importées.
     """
+    logger.info("D\u00e9but import du fichier %s", path)
     try:
         if not os.path.isfile(path):
             raise FileNotFoundError(path)
@@ -36,20 +40,22 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
         elif ext in [".xls", ".xlsx"]:
             df = pd.read_excel(path)
         else:
-            raise ValueError("Format de fichier non supporté")
+            raise ValueError("Format de fichier non support\u00e9")
     except FileNotFoundError:
-        logging.error("Fichier introuvable: %s", path)
+        logger.error("Fichier introuvable: %s", path)
         raise ValueError(f"Fichier introuvable: {path}") from None
     except Exception as e:  # lecture/parse errors
-        logging.error("Erreur lors de la lecture de %s : %s", path, e)
+        logger.exception("Erreur lors de la lecture du fichier %s", path)
         raise ValueError(f"Erreur lors de la lecture du fichier {path} : {e}") from None
 
+    logger.info("%d lignes lues depuis %s", len(df), path)
+
     # normaliser les noms de colonnes
-    col_map = { _norm(c): c for c in df.columns }
+    col_map = {_norm(c): c for c in df.columns}
     required = ["date", "libelle", "montant", "type"]
     missing = [c for c in required if c not in col_map]
     if missing:
-        logging.error("Colonnes manquantes: %s", ", ".join(missing))
+        logger.error("Colonnes manquantes: %s", ", ".join(missing))
         raise ValueError("Colonnes manquantes : " + ", ".join(missing))
 
     df = df.rename(columns={ col_map[k]: k for k in required })
@@ -59,7 +65,7 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
         try:
             dt = pd.to_datetime(row["date"]).date()
         except Exception as e:
-            logging.error("Date invalide %s: %s", row.get("date"), e)
+            logger.error("Date invalide %s: %s", row.get("date"), e)
             raise ValueError(f"Date invalide : {row.get('date')}") from None
         desc = str(row["libelle"]) if not pd.isna(row["libelle"]) else ""
         montant = float(row["montant"])
@@ -69,13 +75,14 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
         elif type_val.startswith("credit"):
             tx = Transaction(dt, desc, montant, debit="", credit="BANQUE")
         else:
-            logging.error("Type invalide: %s", row["type"])
+            logger.error("Type invalide: %s", row["type"])
             raise ValueError(f"Type invalide : {row['type']}")
         txs.append(tx)
         if storage:
             try:
                 storage.add_transaction(tx)
             except Exception as e:
-                logging.error("Erreur lors de l'enregistrement: %s", e)
+                logger.error("Erreur lors de l'enregistrement: %s", e)
                 raise
+    logger.info("Import du fichier %s termin\u00e9 : %d lignes trait\u00e9es", path, len(txs))
     return txs
