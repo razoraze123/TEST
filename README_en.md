@@ -84,8 +84,9 @@ IMAGE_NAME_PATTERN = "{id}:{variant}-{name}.webp"
 You can edit this file directly or use the **Settings** page in the GUI which
 updates it automatically. Each key is described below:
 
-* `BASE_DIR` – directory used to store generated files. Defaults to the folder
-  containing `config.py`.
+* `BASE_DIR` – directory used to store generated files including
+  `scraper.db`. Defaults to the folder containing `config.py`. If the
+  directory does not exist it will be created automatically at startup.
 * `CHROME_DRIVER_PATH` – optional path to a `chromedriver` executable (useful
   without internet access)
 * `CHROME_BINARY_PATH` – optional path to the Chrome binary

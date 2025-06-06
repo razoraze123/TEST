@@ -40,6 +40,9 @@ pytest
 
 ### Paramétrage
 Les chemins sont stockés dans `config.toml` à la racine du dépôt. S'il est absent, un fichier par défaut est créé.
+Le fichier SQLite est situé par défaut dans `BASE_DIR/scraper.db`. Si
+`BASE_DIR` pointe vers un dossier inexistant, il sera créé automatiquement au
+prochain démarrage.
 
 ### Utilisation de l'application
 Lancez l'interface PySide6 avec :
