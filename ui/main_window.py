@@ -162,11 +162,9 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.section_compta.add_item(text, icon)
 
         for sec in [self.section_ecom, self.section_compta]:
-            sec.item_clicked.connect(self._on_sidebar_row_changed)
             side_layout.addWidget(sec)
         side_layout.addStretch(1)
         self.section_ecom._expand()
-        self._on_sidebar_row_changed("Accueil")
         self.body_layout.addWidget(self.sidebar)
 
         # Stacked pages
@@ -177,6 +175,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
 
         # Pages from base class
         self.page_dashboard = self._create_dashboard_page()
+        assert self.page_dashboard
         self.page_scraper = super()._create_scraper_page()
         self.page_image = super()._create_image_page()
         self.page_image_adv = super()._create_advanced_image_page()
@@ -207,6 +206,11 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         ]:
             self.stack.addWidget(p)
 
+        for sec in [self.section_ecom, self.section_compta]:
+            sec.item_clicked.connect(self._on_sidebar_row_changed)
+
+        self._on_sidebar_row_changed("Accueil")
+
 
         # Footer -------------------------------------------------------
         name, version = _get_project_info()
@@ -230,6 +234,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     # ------------------------------------------------------------------
     def _create_dashboard_page(self):
         page = QWidget()
+        page.setObjectName("page_dashboard")
         self.dashboard_grid = QGridLayout(page)
         self.dashboard_grid.setSpacing(20)
         self.dashboard_grid.setContentsMargins(20, 20, 20, 20)
