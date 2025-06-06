@@ -50,6 +50,8 @@ Lancez l'interface PySide6 avec :
 python Application.py
 ```
 Elle permet d'effectuer le scraping, l'optimisation des images et de consulter les rapports.
+Chaque option de la barre latérale affiche désormais une icône (icône Qt standard ou chargée depuis `ui/resources`).
+La barre se rétracte automatiquement sur les petits écrans et peut être agrandie manuellement.
 
 ### D\u00e9marrage du serveur Flask
 L'API n'est plus d\u00e9marr\u00e9e automatiquement. Lancez-la via le bouton **D\u00e9marrer l'API**

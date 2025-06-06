@@ -137,29 +137,29 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
 
         self.section_ecom = CollapsibleSection("🛒  E-commerce")
         ecommerce_items = [
-            ("Accueil", QStyle.SP_DesktopIcon),
-            ("Scraper", QStyle.SP_FileIcon),
-            ("Scraping d'image", QStyle.SP_DirIcon),
-            ("Scraping d'images avancé", QStyle.SP_DirIcon),
-            ("Images avancées", QStyle.SP_DirIcon),
-            ("Sélecteur visuel", QStyle.SP_DialogOpenButton),
-            ("Optimiseur d'images", QStyle.SP_ComputerIcon),
-            ("Rapports", QStyle.SP_FileDialogInfoView),
-            ("API Flask", QStyle.SP_BrowserReload),
-            ("Tâches planifiées", QStyle.SP_FileDialogListView),
+            ("Accueil", self.style().standardIcon(QStyle.SP_DesktopIcon)),
+            ("Scraper", self.style().standardIcon(QStyle.SP_FileIcon)),
+            ("Scraping d'image", self.style().standardIcon(QStyle.SP_DirIcon)),
+            ("Scraping d'images avancé", self.style().standardIcon(QStyle.SP_DirIcon)),
+            ("Images avancées", self.style().standardIcon(QStyle.SP_DirIcon)),
+            ("Sélecteur visuel", self.style().standardIcon(QStyle.SP_DialogOpenButton)),
+            ("Optimiseur d'images", self.style().standardIcon(QStyle.SP_ComputerIcon)),
+            ("Rapports", QIcon('ui/resources/reports.svg')),
+            ("API Flask", self.style().standardIcon(QStyle.SP_BrowserReload)),
+            ("Tâches planifiées", self.style().standardIcon(QStyle.SP_FileDialogListView)),
         ]
         for text, icon in ecommerce_items:
-            self.section_ecom.add_item(text, self.style().standardIcon(icon))
+            self.section_ecom.add_item(text, icon)
 
         self.section_compta = CollapsibleSection("📒  Comptabilité")
         accounting_items = [
-            ("Journal", QStyle.SP_FileDialogInfoView),
-            ("Comptabilité", QStyle.SP_FileDialogContentsView),
-            ("Paramètres", QStyle.SP_FileDialogDetailedView),
-            ("Aide compta", QStyle.SP_DialogHelpButton),
+            ("Journal", self.style().standardIcon(QStyle.SP_FileDialogInfoView)),
+            ("Comptabilité", QIcon('ui/resources/accounting.svg')),
+            ("Paramètres", self.style().standardIcon(QStyle.SP_FileDialogDetailedView)),
+            ("Aide compta", QIcon('ui/resources/help.svg')),
         ]
         for text, icon in accounting_items:
-            self.section_compta.add_item(text, self.style().standardIcon(icon))
+            self.section_compta.add_item(text, icon)
 
         for sec in [self.section_ecom, self.section_compta]:
             sec.item_clicked.connect(self._on_sidebar_row_changed)
