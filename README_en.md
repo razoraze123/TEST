@@ -335,5 +335,38 @@ go build
 Stop the service with `Ctrl+C` and interact with its HTTP API using `curl` or
 from the main application.
 
+## Native Modules (C/Rust)
+
+Sample native libraries live in the `c_modules` and `rust_modules` folders. The C example under `c_modules/hello` exposes a simple `add` function. Build it with:
+
+```bash
+cd c_modules/hello
+make
+```
+
+This creates `libhello.so` which can be loaded with `ctypes`:
+
+```python
+from ctypes import CDLL, c_int
+lib = CDLL("c_modules/hello/libhello.so")
+print(lib.add(c_int(2), c_int(3)))  # 5
+```
+
+The Rust counterpart `rust_modules/hello` builds a shared library exporting a `multiply` function:
+
+```bash
+cd rust_modules/hello
+cargo build --release
+```
+
+Use `ctypes` in the same way:
+
+```python
+from ctypes import CDLL
+lib = CDLL("rust_modules/hello/target/release/libhello.so")
+print(lib.multiply(4, 5))  # 20
+```
+
+
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

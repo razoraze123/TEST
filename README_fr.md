@@ -92,3 +92,35 @@ go build
 
 Interrompez-les avec `Ctrl+C` et interagissez via leur API HTTP avec `curl` ou
 l'application principale.
+## Modules natifs (C/Rust)
+
+Des exemples simples se trouvent dans les dossiers `c_modules` et `rust_modules`. Celui de `c_modules/hello` expose une fonction `add`. Compilez-le avec :
+
+```bash
+cd c_modules/hello
+make
+```
+
+Le fichier `libhello.so` peut être chargé depuis Python grâce à `ctypes` :
+
+```python
+from ctypes import CDLL, c_int
+lib = CDLL("c_modules/hello/libhello.so")
+print(lib.add(c_int(2), c_int(3)))  # 5
+```
+
+Le projet `rust_modules/hello` fournit une fonction `multiply`. Compilez-le :
+
+```bash
+cd rust_modules/hello
+cargo build --release
+```
+
+Le fichier compilé `target/release/libhello.so` se charge de la même manière :
+
+```python
+from ctypes import CDLL
+lib = CDLL("rust_modules/hello/target/release/libhello.so")
+print(lib.multiply(4, 5))  # 20
+```
+
