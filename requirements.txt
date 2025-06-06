@@ -10,6 +10,7 @@ PySide6
 webdriver-manager
 playwright
 SQLAlchemy
+apscheduler
 
 # Development
 pytest
