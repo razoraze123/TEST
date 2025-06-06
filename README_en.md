@@ -206,14 +206,8 @@ ID | Variante | URL concurrent | Nom image          | Lien WordPress
 A1 | Rouge    | https://...    | a1-rouge-face.webp | https://monsite.com/wp-content/uploads/2025/06/a1-rouge-face.webp
 ```
 
-### Flask Server (Optional)
-`flask_server.py` exposes a small HTTP API for uploading and listing product files. Start it separately if needed:
-
-```bash
-python flask_server.py
-```
-
-The server listens on port `5000` by default.
+### Flask Server API
+`flask_server.py` exposes a small HTTP API for uploading and listing product files. The server is started automatically when launching the GUI with `Application.py` and listens on port `5000` by default.
 
 ## Logging
 All console output is also written to `logs/app.log` at the repository root. The

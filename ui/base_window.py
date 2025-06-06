@@ -660,9 +660,6 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        self.btn_activate_flask = RoundButton("Activer Flask")
-        self.btn_activate_flask.clicked.connect(self._on_activate_flask)
-        layout.addWidget(self.btn_activate_flask)
         self.btn_stop_api = RoundButton("Arrêter", color="secondary")
         self.btn_stop_api.clicked.connect(self._stop_worker)
         layout.addWidget(self.btn_stop_api)
@@ -846,14 +843,6 @@ class MainWindow(QMainWindow):
 
         self._run_async(self.scraper_tab, task, console_output=self.console_output_scraper)
 
-    def _on_activate_flask(self):
-        folder = self.input_fiche_folder.text() or self.scraper.save_directory
-        batch = self.spin_batch.value()
-
-        def task(progress_callback, should_stop):
-            self.scraper.run_flask_server(folder, batch)
-
-        self._run_async(None, task, console_output=self.console_output_scraper)
 
     def _on_upload_fiche(self):
         folder = self.input_fiche_folder.text()
