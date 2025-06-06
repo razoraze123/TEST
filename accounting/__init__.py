@@ -10,6 +10,11 @@ from .account import Account
 from .journal_entry import JournalEntry
 from .storage import BaseStorage, InMemoryStorage
 from .bank_import import import_releve
+from .categorization import (
+    categoriser_automatiquement,
+    rapport_par_categorie,
+    CATEGORIES_KEYWORDS,
+)
 
 __all__ = [
     "Transaction",
@@ -18,5 +23,8 @@ __all__ = [
     "BaseStorage",
     "InMemoryStorage",
     "import_releve",
+    "categoriser_automatiquement",
+    "rapport_par_categorie",
+    "CATEGORIES_KEYWORDS",
 ]
 

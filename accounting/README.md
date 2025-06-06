@@ -8,7 +8,9 @@ rapprochement.
 ## Fichiers
 
 - `transaction.py` : classe `Transaction` représentant une opération
-  comptable basique.
+  comptable basique. Chaque transaction possède un champ `categorie`
+  (Client, Fournisseur, Frais, TVA ou Autre) attribué automatiquement
+  selon des mots-clés présents dans le libellé.
 - `account.py` : classe `Account` pour manipuler des comptes et calculer
   leur solde.
 - `journal_entry.py` : classe `JournalEntry` correspondant aux lignes
@@ -16,11 +18,28 @@ rapprochement.
 - `storage.py` : abstractions de stockage avec une implémentation en
   mémoire (`InMemoryStorage`). Ce système pourra être adapté pour
   utiliser SQLite ou des fichiers CSV.
-- `__init__.py` : expose les classes principales du module.
+- `categorization.py` : règles de catégorisation automatique et fonction de
+  rapport des totaux par catégorie.
+- `__init__.py` : expose les classes et fonctions principales du module.
 
 Les données sont pour l'instant conservées en mémoire via des listes
 mais la couche `BaseStorage` prévoit l'intégration future d'autres
 backends de persistance.
+
+Un outil permet également d'obtenir un **rapport rapide** des montants
+totaux par catégorie sur une période donnée via la fonction
+`rapport_par_categorie`.
+
+## Règles de catégorisation
+
+La fonction `categoriser_automatiquement` recherche certains mots-clés
+dans le libellé pour déterminer la catégorie :
+
+- **Client** : « facture », « vente », « paiement client »
+- **Fournisseur** : « achat », « fournisseur »
+- **Frais** : « frais », « carburant », « restaurant », « hotel »
+- **TVA** : « tva », « taxe »
+- **Autre** si aucun mot-clé n'est trouvé.
 
 
 Pour plus de détails sur l'import des relevés et l'utilisation des filtres du journal, consultez le fichier [HELP.md](HELP.md).

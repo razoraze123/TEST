@@ -28,5 +28,7 @@ Sous le bouton d'import se trouvent plusieurs champs permettant de filtrer le jo
 - **Libellé contient…** : texte à rechercher dans la colonne libellé.
 - **Min / Max** : plage de montants.
 - **Type** : tous, seulement les débits ou seulement les crédits.
+- **Catégorie** : limite l'affichage aux opérations d'une catégorie
+  précise (Client, Fournisseur, Frais, TVA ou Autre).
 
 Les filtres s'appliquent immédiatement lors de la modification des champs.

@@ -14,6 +14,7 @@ import pandas as pd
 
 from .transaction import Transaction
 from .storage import BaseStorage
+from .categorization import categoriser_automatiquement
 
 
 def _norm(text: str) -> str:
@@ -77,6 +78,7 @@ def import_releve(path: str, storage: BaseStorage | None = None) -> List[Transac
         else:
             logger.error("Type invalide: %s", row["type"])
             raise ValueError(f"Type invalide : {row['type']}")
+        categoriser_automatiquement(tx)
         txs.append(tx)
         if storage:
             try:
