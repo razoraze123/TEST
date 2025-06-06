@@ -25,6 +25,12 @@ from .reporting import (
     export_report_pdf,
     export_report_csv,
 )
+from .errors import (
+    ComptaError,
+    ComptaImportError,
+    ComptaValidationError,
+    ComptaExportError,
+)
 
 __all__ = [
     "Transaction",
@@ -45,5 +51,9 @@ __all__ = [
     "rapport_categorie",
     "export_report_pdf",
     "export_report_csv",
+    "ComptaError",
+    "ComptaImportError",
+    "ComptaValidationError",
+    "ComptaExportError",
 ]
 

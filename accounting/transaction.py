@@ -7,6 +7,8 @@ from datetime import date
 from typing import Optional
 from uuid import uuid4
 
+from .errors import ComptaValidationError
+
 
 
 @dataclass
@@ -24,5 +26,5 @@ class Transaction:
 
     def __post_init__(self) -> None:
         if self.montant < 0:
-            raise ValueError("Le montant doit être positif")
+            raise ComptaValidationError("Le montant doit être positif")
 

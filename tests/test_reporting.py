@@ -12,6 +12,7 @@ from accounting import (
     rapport_categorie,
     export_report_pdf,
     export_report_csv,
+    ComptaExportError,
 )
 
 
@@ -93,7 +94,7 @@ def test_grand_livre_and_balance_values():
 
 
 def test_export_invalid_extension(tmp_path):
-    with pytest.raises(ValueError):
+    with pytest.raises(ComptaExportError):
         export_transactions([], tmp_path / "report.txt")
 
 
