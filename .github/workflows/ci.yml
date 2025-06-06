@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Install system libraries (PySide6/PyQt6)
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1-mesa-glx
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
