@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QMessageBox,
+    QInputDialog,
+    QCheckBox,
 )
 from ui.components import Sidebar, RoundButton, Card
 from ui.transaction_dialog import TransactionDialog
@@ -37,7 +39,10 @@ import logger_setup  # noqa: F401  # configure logging
 from accounting import (
     import_releve,
     Transaction,
+    JournalEntry,
     CATEGORIES_KEYWORDS,
+    suggere_rapprochements,
+    rapprocher,
     rapport_par_categorie,
 )
 
@@ -62,6 +67,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     def __init__(self, user_name="Utilisateur"):
         self.user_name = user_name
         self.journal_transactions: list[Transaction] = []
+        self.journal_entries: list[JournalEntry] = []
         self.filtered_transactions: list[Transaction] = []
         super().__init__()
 
@@ -248,6 +254,9 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.btn_delete_tx = RoundButton("Supprimer")
         self.btn_delete_tx.clicked.connect(self._delete_transaction)
         btn_layout.addWidget(self.btn_delete_tx)
+        self.btn_reconcile = RoundButton("Rapprocher")
+        self.btn_reconcile.clicked.connect(self._reconcile_transaction)
+        btn_layout.addWidget(self.btn_reconcile)
         btn_layout.addStretch(1)
         layout.addLayout(btn_layout)
 
@@ -281,12 +290,14 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.filter_category.addItem("Toutes")
         self.filter_category.addItems(list(CATEGORIES_KEYWORDS.keys()) + ["Autre"])
         filter_layout.addWidget(self.filter_category)
+        self.cb_unreconciled = QCheckBox("Non rapprochées")
+        filter_layout.addWidget(self.cb_unreconciled)
         filter_layout.addStretch(1)
         layout.addLayout(filter_layout)
 
-        self.table_journal = QTableWidget(0, 6)
+        self.table_journal = QTableWidget(0, 7)
         self.table_journal.setHorizontalHeaderLabels(
-            ["Date", "Libellé", "Montant", "Débit", "Crédit", "Catégorie"]
+            ["Date", "Libellé", "Montant", "Débit", "Crédit", "Catégorie", "État"]
         )
         self.table_journal.itemChanged.connect(self._on_cat_changed)
         layout.addWidget(self.table_journal)
@@ -299,6 +310,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.filter_max,
             self.filter_type,
             self.filter_category,
+            self.cb_unreconciled,
         ]:
             signal = getattr(w, "textChanged", None) or getattr(w, "valueChanged", None) or getattr(w, "dateChanged", None) or getattr(w, "currentIndexChanged", None)
             if signal:
@@ -372,6 +384,32 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self._apply_journal_filters()
 
     # ------------------------------------------------------------------
+    def _reconcile_transaction(self):
+        indexes = self.table_journal.selectionModel().selectedRows()
+        if not indexes:
+            return
+        row = indexes[0].row()
+        if row >= len(self.filtered_transactions):
+            return
+        tx = self.filtered_transactions[row]
+        suggestions = suggere_rapprochements(tx, self.journal_entries, self.journal_transactions)
+        entry = None
+        if suggestions:
+            entry = suggestions[0]
+        elif self.journal_entries:
+            items = [f"{e.date} {e.account_code} {e.debit or e.credit}" for e in self.journal_entries]
+            item, ok = QInputDialog.getItem(self, "Choisir une écriture", "Écriture", items, 0, False)
+            if not ok:
+                return
+            entry = self.journal_entries[items.index(item)]
+        else:
+            QMessageBox.information(self, "Aucune écriture", "Aucune écriture disponible")
+            return
+        rapprocher(tx, entry)
+        show_success("Opération rapprochée", self)
+        self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
     def _apply_journal_filters(self):
         txs = list(self.journal_transactions)
 
@@ -382,6 +420,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         max_val = self.filter_max.value()
         type_val = self.filter_type.currentText()
         cat_val = self.filter_category.currentText()
+        unreconciled_only = self.cb_unreconciled.isChecked()
 
         filtered = []
         for tx in txs:
@@ -401,6 +440,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
                 continue
             if cat_val != "Toutes" and tx.categorie != cat_val:
                 continue
+            if unreconciled_only and tx.journal_entry_id:
+                continue
             filtered.append(tx)
 
         self.table_journal.blockSignals(True)
@@ -415,6 +456,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             item_cat = QTableWidgetItem(tx.categorie)
             item_cat.setFlags(item_cat.flags() | Qt.ItemIsEditable)
             self.table_journal.setItem(i, 5, item_cat)
+            etat = "Rapproché" if tx.journal_entry_id else "à rapprocher"
+            self.table_journal.setItem(i, 6, QTableWidgetItem(etat))
         self.table_journal.blockSignals(False)
 
     # ------------------------------------------------------------------

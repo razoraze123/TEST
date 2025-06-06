@@ -15,6 +15,7 @@ from .categorization import (
     rapport_par_categorie,
     CATEGORIES_KEYWORDS,
 )
+from .reconciliation import suggere_rapprochements, rapprocher
 
 __all__ = [
     "Transaction",
@@ -26,5 +27,7 @@ __all__ = [
     "categoriser_automatiquement",
     "rapport_par_categorie",
     "CATEGORIES_KEYWORDS",
+    "suggere_rapprochements",
+    "rapprocher",
 ]
 
