@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QInputDialog,
     QCheckBox,
+    QTextEdit,
 )
 from ui.components import Sidebar, RoundButton, Card, show_success, show_error
 from ui.transaction_dialog import TransactionDialog
@@ -132,6 +133,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Journal", QStyle.SP_FileDialogInfoView),
             ("Comptabilité", QStyle.SP_FileDialogContentsView),
             ("Paramètres", QStyle.SP_FileDialogDetailedView),
+            ("Aide compta", QStyle.SP_DialogHelpButton),
         ]
         for text, icon in accounting_items:
             it = QListWidgetItem(self.style().standardIcon(icon), text)
@@ -156,6 +158,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.page_settings = super()._create_settings_page()
         self.page_journal = self._create_journal_page()
         self.page_comptabilite = self._create_comptabilite_page()
+        self.page_compta_help = self._create_compta_help_page()
 
         for p in [
             self.page_dashboard,
@@ -168,10 +171,11 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.page_settings,
             self.page_journal,
             self.page_comptabilite,
+            self.page_compta_help,
         ]:
             self.stack.addWidget(p)
 
-        self.sidebar.currentRowChanged.connect(self.stack.setCurrentIndex)
+        self.sidebar.currentRowChanged.connect(self._on_sidebar_row_changed)
 
         # Footer -------------------------------------------------------
         name, version = _get_project_info()
@@ -397,6 +401,24 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         return page
 
     # ------------------------------------------------------------------
+    def _create_compta_help_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+
+        help_view = QTextEdit()
+        help_view.setReadOnly(True)
+        path = Path(__file__).resolve().parents[1] / "accounting" / "HELP.md"
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:  # pragma: no cover - unlikely IO error
+            content = f"Erreur lors du chargement : {e}"
+        help_view.setMarkdown(content)
+        layout.addWidget(help_view)
+
+        return page
+
+    # ------------------------------------------------------------------
     def _import_bank_statement(self):
         path, _ = QFileDialog.getOpenFileName(
             self,
@@ -614,6 +636,30 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             self.sidebar.collapse()
         else:
             self.sidebar.expand()
+
+    # ------------------------------------------------------------------
+    def _on_sidebar_row_changed(self, row):
+        item = self.sidebar.item(row)
+        if not item:
+            return
+        text = item.text()
+        page_map = {
+            "Accueil": self.page_dashboard,
+            "Scraper": self.page_scraper,
+            "Scraping d'image": self.page_image,
+            "Scraping d'images avancé": self.page_image_adv,
+            "Images avancées": self.page_image_adv,
+            "Sélecteur visuel": self.page_selector,
+            "Optimiseur d'images": self.page_optimizer,
+            "API Flask": self.page_api,
+            "Journal": self.page_journal,
+            "Comptabilité": self.page_comptabilite,
+            "Paramètres": self.page_settings,
+            "Aide compta": self.page_compta_help,
+        }
+        page = page_map.get(text)
+        if page:
+            self.stack.setCurrentWidget(page)
 
     # ------------------------------------------------------------------
     def _toggle_theme(self, state=None):
