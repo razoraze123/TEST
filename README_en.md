@@ -116,7 +116,18 @@ automatically at runtime.
 python Application.py
 ```
 
-This starts the PySide6 interface for scraping WooCommerce products.
+This starts the PySide6 interface for scraping WooCommerce products and also
+launches `flask_server.py` in the background. The API listens on port `5000`
+and automatically stops when you close the GUI.
+
+To run the server manually you can execute:
+
+```bash
+python flask_server.py
+```
+
+Press `Ctrl+C` to stop the service or terminate the process from your
+task manager.
 
 Use the "Mode sans t\u00eate (headless)" checkbox in the settings page to run Chrome without opening a visible window.
 
@@ -213,6 +224,11 @@ A1 | Rouge    | https://...    | a1-rouge-face.webp | https://monsite.com/wp-con
 All console output is also written to `logs/app.log` at the repository root. The
 file rotates automatically when it reaches about 1 MB. Errors coming from the
 `accounting` package are additionally stored in `logs/compta_errors.log`.
+Monitor the log live with:
+
+```bash
+tail -f logs/app.log
+```
 
 ## Resuming a Scrape
 During scraping, progress is stored in `scraping_checkpoint.json` inside
@@ -296,6 +312,28 @@ argument:
 ```
 
 Ensure that Python and the console script are in the system `PATH`.
+
+## Node.js and Go Microservices
+
+Additional microservices can be implemented in the `js_modules` and
+`go_modules` directories. To start a Node.js service:
+
+```bash
+cd js_modules/<service>
+npm install
+npm start    # or: node dist/index.js
+```
+
+For a Go service:
+
+```bash
+cd go_modules/<service>
+go build
+./<service>
+```
+
+Stop the service with `Ctrl+C` and interact with its HTTP API using `curl` or
+from the main application.
 
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
