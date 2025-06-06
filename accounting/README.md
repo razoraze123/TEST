@@ -83,3 +83,31 @@ Les rapports comportent trois tableaux :
 Dans l'interface graphique, la page **Journal** possède un bouton
 **Exporter** permettant d'enregistrer soit la liste des transactions, soit les
 écritures courantes selon le format choisi.
+
+## Exemple d'import et d'export
+
+Voici un exemple minimal pour importer un relevé bancaire puis enregistrer les écritures correspondantes :
+
+```python
+from accounting import import_releve, export_transactions, export_entries
+from accounting import InMemoryStorage
+
+storage = InMemoryStorage()
+transactions = import_releve("releve.csv", storage)
+# ... générer ou charger des écritures dans `entries` ...
+export_transactions(transactions, "exports/journal/transactions.xlsx")
+export_entries(entries, "exports/journal/entries.csv")
+```
+
+La page **Journal** comporte un bouton **Importer relevé...** permettant de charger un fichier au même format. Un lien **Aide** ouvre le fichier `accounting/HELP.md` pour détailler les colonnes attendues.
+
+## Exceptions et journaux d'erreurs
+
+Le module définit plusieurs exceptions spécialisées :
+
+- `ComptaError` : classe de base pour toutes les erreurs comptables.
+- `ComptaImportError` : problème lors de la lecture d'un fichier (format non reconnu, fichier absent...).
+- `ComptaValidationError` : données manquantes ou valeur invalide.
+- `ComptaExportError` : erreur lors de l'écriture d'un fichier d'export.
+
+Toutes les erreurs issues du package sont enregistrées dans le fichier `logs/compta_errors.log`, en plus de l'affichage classique dans la console.
