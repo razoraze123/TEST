@@ -62,34 +62,45 @@ playwright install
 
 ## Configuring Paths
 Paths are stored in a `config.toml` file located at the repository root. If the
-file does not exist, default values from `config_manager.py` are used. The file
-contains entries such as:
+file is missing or cannot be read, a new one is written automatically using
+defaults from `config_manager.py` and a warning is logged to `logs/app.log`.
+The file looks like this:
 
 ```toml
 BASE_DIR = "/path/to/project"
-CHROME_DRIVER_PATH = "/path/to/chromedriver"
-CHROME_BINARY_PATH = "/path/to/chrome"
-SUFFIX_FILE_PATH = "/path/to/custom_suffixes.py"
-LINKS_FILE_PATH = "/path/to/liens_clean.txt"
+CHROME_DRIVER_PATH = ""
+CHROME_BINARY_PATH = ""
 OPTIPNG_PATH = "tools/optimizers/optipng.exe"
 CWEBP_PATH = "tools/optimizers/cwebp.exe"
+SUFFIX_FILE_PATH = "/path/to/project/custom_suffixes.py"
+LINKS_FILE_PATH = "/path/to/project/liens_clean.txt"
 ROOT_FOLDER = "image"
 THEME = "dark"
+WP_DOMAIN = "https://monsite.com"
+WP_UPLOAD_PATH = "wp-content/uploads/2025/06"
+IMAGE_NAME_PATTERN = "{id}:{variant}-{name}.webp"
 ```
 
 You can edit this file directly or use the **Settings** page in the GUI which
-updates it automatically. The defaults mirror the previous behaviour:
+updates it automatically. Each key is described below:
 
 * `BASE_DIR` – directory used to store generated files. Defaults to the folder
   containing `config.py`.
 * `CHROME_DRIVER_PATH` – optional path to a `chromedriver` executable (useful
   without internet access)
 * `CHROME_BINARY_PATH` – optional path to the Chrome binary
+* `OPTIPNG_PATH` – path to the `optipng` executable used for optimisation
+* `CWEBP_PATH` – path to the `cwebp` executable
 * `SUFFIX_FILE_PATH` – file containing custom suffixes for `scraper_images.py`.
   Defaults to `BASE_DIR/custom_suffixes.py`.
 * `LINKS_FILE_PATH` – text file listing product URLs. Defaults to
   `BASE_DIR/liens_clean.txt`.
+* `ROOT_FOLDER` – subdirectory inside `BASE_DIR` where images are written.
+  Defaults to `"image"`.
 * `THEME` – either `dark` or `light`. Controls the application appearance.
+* `WP_DOMAIN` – base URL of the WordPress site used when uploading files.
+* `WP_UPLOAD_PATH` – target upload directory relative to `WP_DOMAIN`.
+* `IMAGE_NAME_PATTERN` – formatting pattern for generated image names.
 
 A minimal template file `custom_suffixes.example.py` is included in the
 repository. Copy it to `custom_suffixes.py` and edit it to provide your own
