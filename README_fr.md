@@ -53,6 +53,9 @@ Elle permet d'effectuer le scraping, l'optimisation des images et de consulter l
 Chaque option de la barre latérale affiche désormais une icône (icône Qt standard ou chargée depuis `ui/resources`).
 La barre se rétracte automatiquement sur les petits écrans et peut être agrandie manuellement.
 
+### Mode fenêtre du sélecteur visuel
+Lorsque vous lancez l'outil **Sélecteur visuel**, la page à analyser s'ouvre désormais dans une fenêtre indépendante. L'application principale devient alors une barre de contrôle compacte : saisie de l'URL, test du sélecteur, copie ou sauvegarde. Les deux fenêtres restent synchronisées : la barre met à jour l'aperçu lors de l'ouverture d'une nouvelle adresse et récupère automatiquement le sélecteur sélectionné. Fermez simplement la fenêtre externe pour revenir à l'interface classique.
+
 ### D\u00e9marrage du serveur Flask
 L'API n'est plus d\u00e9marr\u00e9e automatiquement. Lancez-la via le bouton **D\u00e9marrer l'API**
 dans l'onglet d\u00e9di\u00e9 ou ajoutez `ENABLE_FLASK_API = "true"` dans `config.toml`
