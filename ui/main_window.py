@@ -450,6 +450,15 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         indexes = self.table_journal.selectionModel().selectedRows()
         if not indexes:
             return
+        reply = QMessageBox.question(
+            self,
+            "Confirmer la suppression",
+            "Supprimer les op\u00e9rations s\u00e9lectionn\u00e9es ?",
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if reply != QMessageBox.Yes:
+            show_error("Suppression annul\u00e9e", self)
+            return
         rows = sorted([i.row() for i in indexes], reverse=True)
         for row in rows:
             if row < len(self.filtered_transactions):
