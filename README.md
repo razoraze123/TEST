@@ -239,6 +239,25 @@ EOF
 
 Future versions of the CLI and HTTP API will expose similar search features.
 
+## Utilisation de l’onglet Comptabilité
+
+Ouvrez l’onglet **Comptabilité** depuis la barre latérale pour gérer vos
+transactions. Utilisez **Importer relevé…** pour charger un fichier CSV ou Excel
+contenant vos opérations. Les colonnes attendues sont décrites dans le fichier
+`accounting/HELP.md`. Les lignes importées apparaissent dans un tableau.
+
+Sous la barre de boutons, des filtres permettent de restreindre l’affichage :
+période, texte du libellé, plage de montants, type de mouvement, catégorie et
+l’option **Non rapprochées**. Les résultats se mettent à jour immédiatement.
+
+Sélectionnez une transaction puis cliquez sur **Rapprocher** pour l’associer à
+l’écriture correspondante du journal. L’application suggère automatiquement les
+écritures compatibles et marque la ligne comme « Rapprochée » une fois validée.
+
+Le bouton **Exporter** permet d’enregistrer les transactions ou les écritures au
+format CSV ou Excel pour un traitement extérieur. Une aide détaillée se trouve
+dans le fichier [accounting/HELP.md](accounting/HELP.md).
+
 ## Export comptable
 
 L'application prend en charge l'export des journaux et rapports
