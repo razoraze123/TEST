@@ -10,6 +10,13 @@ from PySide6.QtWidgets import (
     QStackedLayout,
     QStyle,
     QFrame,
+    QFileDialog,
+    QTableWidget,
+    QTableWidgetItem,
+    QDateEdit,
+    QDoubleSpinBox,
+    QComboBox,
+    QMessageBox,
 )
 from ui.components import Sidebar, RoundButton, Card
 from PySide6.QtCore import Qt
@@ -23,6 +30,8 @@ from ui.style import apply_theme
 from ui.responsive import ResponsiveMixin
 import config
 import config_manager
+import logging
+from accounting import import_releve, Transaction
 
 
 def _get_project_info():
@@ -42,6 +51,7 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
 
     def __init__(self, user_name="Utilisateur"):
         self.user_name = user_name
+        self.journal_transactions: list[Transaction] = []
         super().__init__()
 
     # ------------------------------------------------------------------
@@ -208,9 +218,120 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     def _create_journal_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
+
         layout.addWidget(QLabel("Journal comptable"))
+
+        btn_layout = QHBoxLayout()
+        self.btn_import_tx = RoundButton("Importer relevé…")
+        self.btn_import_tx.clicked.connect(self._import_bank_statement)
+        btn_layout.addWidget(self.btn_import_tx)
+        btn_layout.addStretch(1)
+        layout.addLayout(btn_layout)
+
+        # filters
+        filter_layout = QHBoxLayout()
+        self.filter_start = QDateEdit()
+        self.filter_start.setCalendarPopup(True)
+        self.filter_end = QDateEdit()
+        self.filter_end.setCalendarPopup(True)
+        filter_layout.addWidget(QLabel("Du"))
+        filter_layout.addWidget(self.filter_start)
+        filter_layout.addWidget(QLabel("au"))
+        filter_layout.addWidget(self.filter_end)
+        self.filter_text = QLineEdit()
+        self.filter_text.setPlaceholderText("Libellé contient…")
+        filter_layout.addWidget(self.filter_text)
+        self.filter_min = QDoubleSpinBox()
+        self.filter_min.setDecimals(2)
+        self.filter_min.setRange(-1e9, 1e9)
+        filter_layout.addWidget(QLabel("Min"))
+        filter_layout.addWidget(self.filter_min)
+        self.filter_max = QDoubleSpinBox()
+        self.filter_max.setDecimals(2)
+        self.filter_max.setRange(-1e9, 1e9)
+        filter_layout.addWidget(QLabel("Max"))
+        filter_layout.addWidget(self.filter_max)
+        self.filter_type = QComboBox()
+        self.filter_type.addItems(["Tous", "Débit", "Crédit"])
+        filter_layout.addWidget(self.filter_type)
+        filter_layout.addStretch(1)
+        layout.addLayout(filter_layout)
+
+        self.table_journal = QTableWidget(0, 5)
+        self.table_journal.setHorizontalHeaderLabels(
+            ["Date", "Libellé", "Montant", "Débit", "Crédit"]
+        )
+        layout.addWidget(self.table_journal)
+
+        for w in [
+            self.filter_start,
+            self.filter_end,
+            self.filter_text,
+            self.filter_min,
+            self.filter_max,
+            self.filter_type,
+        ]:
+            signal = getattr(w, "textChanged", None) or getattr(w, "valueChanged", None) or getattr(w, "dateChanged", None) or getattr(w, "currentIndexChanged", None)
+            if signal:
+                signal.connect(self._apply_journal_filters)
+
         layout.addStretch(1)
         return page
+
+    # ------------------------------------------------------------------
+    def _import_bank_statement(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Importer un relevé",
+            "",
+            "Fichiers CSV/Excel (*.csv *.xls *.xlsx)"
+        )
+        if not path:
+            return
+        try:
+            self.journal_transactions = import_releve(path)
+        except Exception as e:
+            logging.exception("Erreur import relev\u00e9")
+            QMessageBox.critical(self, "Erreur d'import", str(e))
+            return
+        self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
+    def _apply_journal_filters(self):
+        txs = list(self.journal_transactions)
+
+        start = self.filter_start.date().toPython() if self.filter_start.date().isValid() else None
+        end = self.filter_end.date().toPython() if self.filter_end.date().isValid() else None
+        text = self.filter_text.text().lower().strip()
+        min_val = self.filter_min.value()
+        max_val = self.filter_max.value()
+        type_val = self.filter_type.currentText()
+
+        filtered = []
+        for tx in txs:
+            if start and tx.date < start:
+                continue
+            if end and tx.date > end:
+                continue
+            if text and text not in tx.description.lower():
+                continue
+            if min_val and tx.montant < min_val:
+                continue
+            if max_val and tx.montant > max_val:
+                continue
+            if type_val == "D\u00e9bit" and not tx.debit:
+                continue
+            if type_val == "Cr\u00e9dit" and not tx.credit:
+                continue
+            filtered.append(tx)
+
+        self.table_journal.setRowCount(len(filtered))
+        for i, tx in enumerate(filtered):
+            self.table_journal.setItem(i, 0, QTableWidgetItem(str(tx.date)))
+            self.table_journal.setItem(i, 1, QTableWidgetItem(tx.description))
+            self.table_journal.setItem(i, 2, QTableWidgetItem(f"{tx.montant:.2f}"))
+            self.table_journal.setItem(i, 3, QTableWidgetItem(tx.debit))
+            self.table_journal.setItem(i, 4, QTableWidgetItem(tx.credit))
 
     # ------------------------------------------------------------------
     def apply_responsive(self, values):
