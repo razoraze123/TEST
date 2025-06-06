@@ -14,7 +14,27 @@ import logging
 from logging import getLogger
 from playwright.async_api import async_playwright
 import hashlib
-from PySide6.QtGui import QImage
+try:
+    from PySide6.QtGui import QImage  # type: ignore
+except Exception:  # pragma: no cover - optional dependency may be missing
+    class QImage:  # minimal stub used when PySide6 is unavailable
+        def __init__(self, path):
+            self._w = 0
+            self._h = 0
+            try:
+                import struct
+                with open(path, 'rb') as f:
+                    header = f.read(24)
+                if header.startswith(b'\x89PNG'):
+                    self._w, self._h = struct.unpack('>II', header[16:24])
+            except Exception:
+                pass
+
+        def width(self):
+            return self._w
+
+        def height(self):
+            return self._h
 import config
 import logger_setup  # noqa: F401  # configure logging
 import storage
