@@ -239,6 +239,13 @@ EOF
 
 Future versions of the CLI and HTTP API will expose similar search features.
 
+## Export comptable
+
+L'application prend en charge l'export des journaux et rapports
+comptables. Reportez-vous au fichier
+[accounting/README.md](accounting/README.md) pour une description
+détaillée des formats disponibles et de l'organisation des fichiers.
+
 ## Command Line Interface
 
 Installing the project with `pip install .` exposes a `woocommerce-scraper`
