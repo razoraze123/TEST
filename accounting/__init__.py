@@ -9,6 +9,7 @@ from .transaction import Transaction
 from .account import Account
 from .journal_entry import JournalEntry
 from .storage import BaseStorage, InMemoryStorage
+from .bank_import import import_releve
 
 __all__ = [
     "Transaction",
@@ -16,5 +17,6 @@ __all__ = [
     "JournalEntry",
     "BaseStorage",
     "InMemoryStorage",
+    "import_releve",
 ]
 
