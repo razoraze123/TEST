@@ -61,3 +61,22 @@ class Log(Base):
     created = Column(DateTime)
     level = Column(String)
     message = Column(Text)
+
+
+class Preference(Base):
+    """Simple key/value store for user preferences."""
+
+    __tablename__ = 'preferences'
+
+    name = Column(String, primary_key=True)
+    value = Column(String)
+
+
+class Selector(Base):
+    """Saved CSS selectors keyed by domain."""
+
+    __tablename__ = 'selectors'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    domain = Column(String, unique=True)
+    selector = Column(String)

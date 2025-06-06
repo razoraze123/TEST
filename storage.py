@@ -2,11 +2,19 @@ from __future__ import annotations
 
 import os
 from typing import List, Tuple
+from urllib.parse import urlparse
 
 import config
 import db
 from db import SessionLocal
-from db.models import Base, Product, Variant, Competitor
+from db.models import (
+    Base,
+    Product,
+    Variant,
+    Competitor,
+    Preference,
+    Selector,
+)
 
 
 def db_path(base_dir=None) -> str:
@@ -62,4 +70,46 @@ def search_products(name: str) -> List[Tuple[str, str, str, str]]:
             .all()
         )
         return [(p.product_id, p.name, p.sku, p.price) for p in results]
+
+
+# ---------------------------------------------------------------------------
+# Preference helpers
+
+def set_preference(name: str, value: str) -> None:
+    """Store a string preference value keyed by *name*."""
+    with _get_session() as session:
+        obj = session.get(Preference, name)
+        if obj is None:
+            obj = Preference(name=name)
+            session.add(obj)
+        obj.value = value
+        session.commit()
+
+
+def get_preference(name: str, default: str | None = None) -> str | None:
+    """Return the preference value for *name* or *default*."""
+    with _get_session() as session:
+        obj = session.get(Preference, name)
+        return obj.value if obj else default
+
+
+# ---------------------------------------------------------------------------
+# Selector helpers
+
+def load_selectors() -> dict:
+    """Return saved selectors as {domain: selector} mapping."""
+    with _get_session() as session:
+        return {sel.domain: sel.selector for sel in session.query(Selector).all()}
+
+
+def save_selector(url: str, selector: str) -> None:
+    """Persist selector for given *url* (domain key)."""
+    domain = urlparse(url).netloc or url
+    with _get_session() as session:
+        obj = session.query(Selector).filter_by(domain=domain).first()
+        if obj is None:
+            obj = Selector(domain=domain)
+            session.add(obj)
+        obj.selector = selector
+        session.commit()
 

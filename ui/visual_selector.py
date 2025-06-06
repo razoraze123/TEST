@@ -14,9 +14,8 @@ import PySide6
 
 import logging
 
-import json
-import os
 from urllib.parse import urlparse
+import storage
 
 # Try loading qwebchannel.js from the packaged resources first.
 _local_qwebchannel = os.path.join(
@@ -37,33 +36,13 @@ else:
     with open(_pyside_path, "r", encoding="utf-8") as f:
         QWEBCHANNEL_JS = f.read()
 
-# Path to the JSON file storing selectors
-SELECTORS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "selectors.json")
-
 
 def load_selectors():
-    if os.path.isfile(SELECTORS_FILE):
-        try:
-            with open(SELECTORS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
+    return storage.load_selectors()
 
 
-def save_selectors(data):
-    try:
-        with open(SELECTORS_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2)
-    except Exception as e:
-        print(f"Erreur sauvegarde sélecteurs: {e}")
-
-
-def save_selector(url, selector):
-    data = load_selectors()
-    domain = urlparse(url).netloc or url
-    data[domain] = selector
-    save_selectors(data)
+def save_selector(url: str, selector: str) -> None:
+    storage.save_selector(url, selector)
 
 
 class JSBridge(QObject):
@@ -101,9 +80,11 @@ class VisualSelectorPage(QWidget):
         self.input_selector = QLineEdit()
         self.input_selector.setPlaceholderText("Sélecteur généré")
         self.btn_copy = QPushButton("Copier")
+        self.btn_test = QPushButton("Tester")
         self.btn_save = QPushButton("Sauvegarder")
         sel_layout.addWidget(self.input_selector)
         sel_layout.addWidget(self.btn_copy)
+        sel_layout.addWidget(self.btn_test)
         sel_layout.addWidget(self.btn_save)
         layout.addLayout(sel_layout)
 
@@ -123,13 +104,43 @@ class VisualSelectorPage(QWidget):
 
         self.btn_open.clicked.connect(self.load_url)
         self.btn_copy.clicked.connect(self.copy_selector)
+        self.btn_test.clicked.connect(self.on_test_selector)
         self.btn_save.clicked.connect(self.save_current_selector)
+        self.input_selector.textChanged.connect(self.on_test_selector)
         self.webview.loadFinished.connect(self.inject_js)
+
+    # ------------------------------------------------------------------
+    def on_test_selector(self):
+        selector = self.input_selector.text().strip()
+        self.highlight_selector(selector)
+
+    def highlight_selector(self, selector: str):
+        if not selector:
+            return
+        js = f"""
+            (function() {{
+                document.querySelectorAll('.__py_highlight').forEach(function(e) {{
+                    e.style.outline = e.__oldOutline || '';
+                    e.classList.remove('__py_highlight');
+                }});
+                try {{
+                    document.querySelectorAll('{selector}').forEach(function(el) {{
+                        el.__oldOutline = el.style.outline;
+                        el.style.outline = '2px dashed blue';
+                        el.classList.add('__py_highlight');
+                    }});
+                }} catch(e) {{}}
+            }})();
+        """
+        self.webview.page().runJavaScript(js)
 
     def load_url(self):
         url = self.input_url.text().strip()
         if url:
             self.webview.load(QUrl(url))
+            saved = load_selectors().get(urlparse(url).netloc)
+            if saved:
+                self.input_selector.setText(saved)
 
     def copy_selector(self):
         QApplication.clipboard().setText(self.input_selector.text())

@@ -43,6 +43,7 @@ from pathlib import Path
 import pandas as pd
 from ui.components import RoundButton, Sidebar, show_success, show_error
 from ui.style import apply_theme, style_progress_bar
+import storage
 from scraper_core import ScraperCore
 from optimizer import ImageOptimizer
 import config
@@ -323,8 +324,10 @@ class MainWindow(QMainWindow):
         ]
         self.sidebar.currentRowChanged.connect(lambda i: self.stack.setCurrentWidget(pages[i]))
 
-        # Apply centralized theme
-        apply_theme(self, config.THEME)
+        # Apply centralized theme (load from DB if present)
+        theme = storage.get_preference("theme", config.THEME)
+        font_size = int(storage.get_preference("font_size", "14"))
+        apply_theme(self, theme, font_size=font_size)
 
     def _create_scraper_page(self):
         page = QWidget()

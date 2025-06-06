@@ -52,6 +52,17 @@ class Sidebar(QListWidget):
         self.collapsed = False
         self.setFixedWidth(self._expanded_width)
 
+        # width animation
+        self._anim = QPropertyAnimation(self, b"maximumWidth")
+        self._anim.setDuration(200)
+
+        # small badge for notifications
+        self.badge = QLabel("0", self)
+        self.badge.setStyleSheet(
+            "background:#c0392b; color:white; border-radius:8px; padding:2px 6px;"
+        )
+        self.badge.hide()
+
     def add_section(self, text: str, icon: str | None = None):
         """Insert a non-selectable header item."""
         display = f"{icon}  {text}" if icon else text
@@ -71,7 +82,10 @@ class Sidebar(QListWidget):
         self._stored_texts = [self.item(i).text() for i in range(self.count())]
         for i in range(self.count()):
             self.item(i).setText("")
-        self.setFixedWidth(self._collapsed_width)
+        self._anim.stop()
+        self._anim.setStartValue(self.width())
+        self._anim.setEndValue(self._collapsed_width)
+        self._anim.start()
         self.collapsed = True
 
     def expand(self):
@@ -79,7 +93,10 @@ class Sidebar(QListWidget):
             return
         for i, text in enumerate(self._stored_texts):
             self.item(i).setText(text)
-        self.setFixedWidth(self._expanded_width)
+        self._anim.stop()
+        self._anim.setStartValue(self.width())
+        self._anim.setEndValue(self._expanded_width)
+        self._anim.start()
         self.collapsed = False
 
     def toggle(self):
@@ -87,6 +104,20 @@ class Sidebar(QListWidget):
             self.expand()
         else:
             self.collapse()
+
+    # ------------------------------------------------------------------
+    def set_badge_count(self, count: int) -> None:
+        """Display *count* in the notification badge."""
+        if count > 0:
+            self.badge.setText(str(count))
+            self.badge.show()
+        else:
+            self.badge.hide()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self.badge.isVisible():
+            self.badge.move(self.width() - self.badge.width() - 4, 4)
 
 
 class Card(QFrame):
