@@ -36,6 +36,7 @@ from ui.style import apply_theme
 from ui.responsive import ResponsiveMixin
 import config
 import config_manager
+import storage
 import logging
 import logger_setup  # noqa: F401  # configure logging
 import db
@@ -320,7 +321,8 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ["Date", "Libellé", "Montant", "Débit", "Crédit", "Catégorie", "État"]
         )
         self.table_journal.itemChanged.connect(self._on_cat_changed)
-        style.style_table_widget(self.table_journal, config.THEME)
+        font_size = int(storage.get_preference("font_size", "14"))
+        style.style_table_widget(self.table_journal, config.THEME, font_size=font_size)
         layout.addWidget(self.table_journal)
 
         for w in [
@@ -698,11 +700,13 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
     # ------------------------------------------------------------------
     def _toggle_theme(self, state=None):
         theme = "dark" if self.cb_dark_theme.isChecked() else "light"
-        apply_theme(self, theme)
-        style.style_table_widget(self.table_journal, theme)
+        font_size = int(storage.get_preference("font_size", "14"))
+        apply_theme(self, theme, font_size=font_size)
+        style.style_table_widget(self.table_journal, theme, font_size=font_size)
         data = config_manager.load()
         data["THEME"] = theme
         config_manager.save(data)
+        storage.set_preference("theme", theme)
         config.reload()
 
     # ------------------------------------------------------------------

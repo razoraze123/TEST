@@ -5,9 +5,15 @@ class ResponsiveMixin:
 
     # width breakpoints -> settings
     BREAKPOINTS = [
-        (0, {"margin": 10, "spacing": 8, "font": 12, "collapse": True}),
-        (700, {"margin": 20, "spacing": 15, "font": 14, "collapse": False}),
-        (1100, {"margin": 30, "spacing": 20, "font": 16, "collapse": False}),
+        # mobile phones
+        (0, {"margin": 6, "spacing": 4, "font": 11, "collapse": True}),
+        (480, {"margin": 10, "spacing": 8, "font": 12, "collapse": True}),
+        # tablets
+        (768, {"margin": 20, "spacing": 12, "font": 14, "collapse": False}),
+        # small desktop
+        (1024, {"margin": 30, "spacing": 16, "font": 15, "collapse": False}),
+        # large desktop
+        (1440, {"margin": 40, "spacing": 20, "font": 16, "collapse": False}),
     ]
 
     def _responsive_values(self, width):
