@@ -113,3 +113,17 @@ def style_progress_bar(bar):
         "QProgressBar {border:1px solid #444; border-radius:8px; text-align:center; height:25px;}"
         f"QProgressBar::chunk {{background-color:{PRIMARY_BLUE}; border-radius:8px;}}"
     )
+
+
+def style_table_widget(table, theme="dark"):
+    """Apply consistent styling to table widgets for dark/light themes."""
+    if theme == "dark":
+        table.setStyleSheet(
+            f"QTableWidget {{background-color:{SURFACE_DARK}; color:{TEXT_LIGHT}; gridline-color:{BORDER_DARK};}}"
+            f"QHeaderView::section {{background-color:{SIDEBAR_DARK}; color:{TEXT_LIGHT}; border:1px solid {BORDER_DARK}; padding:4px;}}"
+        )
+    else:
+        table.setStyleSheet(
+            f"QTableWidget {{background-color:{BACKGROUND_LIGHT}; color:{TEXT_DARK}; gridline-color:{BORDER_LIGHT};}}"
+            f"QHeaderView::section {{background-color:{SURFACE_LIGHT}; color:{TEXT_DARK}; border:1px solid {BORDER_LIGHT}; padding:4px;}}"
+        )
