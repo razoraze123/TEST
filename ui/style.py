@@ -80,6 +80,15 @@ QListWidget::item[header="true"] {{
 }}
 QListWidget::item:selected {{background: {palette['PRIMARY']};}}
 QFrame[card="true"] {{background: #414141; border-radius: 8px; padding: 16px;}}
+CollapsibleSection {{
+    background-color: {palette['SURFACE']};
+    border: 1px solid {palette['BORDER']};
+    border-radius: 6px;
+    padding: 4px;
+}}
+CollapsibleSection:hover {{
+    background-color: {palette['HOVER']};
+}}
 """
 
 
