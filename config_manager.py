@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 import tomllib
+
+import logger_setup  # noqa: F401  # configure logging
 
 CONFIG_FILE = os.path.join(os.path.dirname(__file__), "config.toml")
 
@@ -26,19 +29,24 @@ DEFAULTS = {
 def load(path: str = CONFIG_FILE) -> dict:
     """Load configuration from *path* and return a dict of values."""
     cfg = DEFAULTS.copy()
+    need_write = False
     if os.path.isfile(path):
         try:
             with open(path, "rb") as f:
-                content = f.read()
-            try:
-                data = tomllib.loads(content.decode("utf-8"))
-            except Exception:
-                data = json.loads(content.decode("utf-8"))
+                data = tomllib.load(f)
             for key in DEFAULTS:
-                if key in data and data[key] not in ("", None):
+                if data.get(key):
                     cfg[key] = data[key]
         except Exception as e:
-            print(f"Error reading {path}: {e}")
+            logging.error("Error reading %s: %s", path, e)
+            need_write = True
+    else:
+        logging.warning("Config file %s missing", path)
+        need_write = True
+    if need_write:
+        save(cfg, path)
+        logging.info("Default configuration written to %s", path)
+        print(f"Default configuration written to {path}")
     return cfg
 
 
