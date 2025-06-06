@@ -215,7 +215,8 @@ The server listens on port `5000` by default.
 
 ## Logging
 All console output is also written to `logs/app.log` at the repository root. The
-file rotates automatically when it reaches about 1 MB.
+file rotates automatically when it reaches about 1 MB. Errors coming from the
+`accounting` package are additionally stored in `logs/compta_errors.log`.
 
 ## Resuming a Scrape
 During scraping, progress is stored in `scraping_checkpoint.json` inside
