@@ -56,3 +56,30 @@ transaction sont ignorées. Une fois le bon élément trouvé, la fonction
 `rapprocher` assigne l'identifiant de l'écriture à la transaction. Une
 transaction possédant un champ `journal_entry_id` est considérée comme
 « rapprochée » et peut être filtrée dans l'interface graphique.
+
+## Export des données
+
+Plusieurs fonctions permettent d'enregistrer les informations du journal au
+format **CSV** ou **XLSX** : `export_transactions` pour les transactions brutes
+et `export_entries` pour les écritures générées. Les rapports globaux peuvent
+être exportés en **PDF** avec `export_report_pdf` ou en **CSV** via
+`export_report_csv`.
+
+L'arborescence recommandée pour stocker ces fichiers est :
+
+```text
+BASE_DIR/
+  exports/
+    journal/
+    rapports/
+```
+
+Les rapports comportent trois tableaux :
+
+- **grand livre** : toutes les écritures classées par compte puis par date ;
+- **balance** : total des débits et crédits par compte avec le solde associé ;
+- **synthèse** (totaux par catégorie).
+
+Dans l'interface graphique, la page **Journal** possède un bouton
+**Exporter** permettant d'enregistrer soit la liste des transactions, soit les
+écritures courantes selon le format choisi.
