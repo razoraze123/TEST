@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from accounting import import_releve, InMemoryStorage
+from accounting import import_releve, InMemoryStorage, ComptaValidationError
 
 
 def test_import_releve_csv(tmp_path):
@@ -29,5 +29,5 @@ def test_import_releve_missing_col(tmp_path):
     df = pd.DataFrame({'Date': ['2023-01-01']})
     path = tmp_path / 'bad.csv'
     df.to_csv(path, index=False)
-    with pytest.raises(ValueError):
+    with pytest.raises(ComptaValidationError):
         import_releve(str(path))

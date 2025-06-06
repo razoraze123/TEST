@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+import logger_setup  # noqa: F401  # configure logging
 import os
 from dataclasses import asdict
 from datetime import date
@@ -11,20 +13,28 @@ import pandas as pd
 
 from fpdf import FPDF
 
+logger = logging.getLogger(__name__)
+
 from .transaction import Transaction
 from .journal_entry import JournalEntry
 from .categorization import rapport_par_categorie
+from .errors import ComptaExportError
 
 
 def _save_dataframe(df: pd.DataFrame, path: str) -> None:
     """Sauvegarde un DataFrame en CSV ou XLSX selon l'extension."""
     ext = os.path.splitext(path)[1].lower()
     if ext == ".csv":
-        df.to_csv(path, index=False)
+        func = df.to_csv
     elif ext in {".xls", ".xlsx"}:
-        df.to_excel(path, index=False)
+        func = df.to_excel
     else:
-        raise ValueError("Extension non supportée: " + ext)
+        raise ComptaExportError("Extension non supportée: " + ext)
+    try:
+        func(path, index=False)
+    except Exception as e:
+        logger.exception("Erreur lors de l'export du fichier %s", path)
+        raise ComptaExportError(f"Erreur lors de l'export du fichier {path}: {e}") from None
 
 
 def export_transactions(transactions: Iterable[Transaction], path: str) -> None:
@@ -87,23 +97,27 @@ def export_report_pdf(
     ledger_df: pd.DataFrame, balance_df: pd.DataFrame, cat_df: pd.DataFrame, path: str
 ) -> None:
     """Exporte un rapport complet (grand livre, balance, catégories) en PDF."""
-    pdf = FPDF(orientation="L")
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Grand livre", ln=True)
-    _add_table(pdf, ledger_df)
+    try:
+        pdf = FPDF(orientation="L")
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.cell(0, 10, "Grand livre", ln=True)
+        _add_table(pdf, ledger_df)
 
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Balance", ln=True)
-    _add_table(pdf, balance_df)
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.cell(0, 10, "Balance", ln=True)
+        _add_table(pdf, balance_df)
 
-    pdf.add_page()
-    pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, "Totaux par catégorie", ln=True)
-    _add_table(pdf, cat_df)
+        pdf.add_page()
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.cell(0, 10, "Totaux par catégorie", ln=True)
+        _add_table(pdf, cat_df)
 
-    pdf.output(path)
+        pdf.output(path)
+    except Exception as e:
+        logger.exception("Erreur lors de l'export PDF %s", path)
+        raise ComptaExportError(f"Erreur lors de l'export PDF {path}: {e}") from None
 
 
 def export_report_csv(
@@ -111,7 +125,11 @@ def export_report_csv(
 ) -> None:
     """Exporte les trois rapports au format CSV dans le dossier donné."""
     os.makedirs(folder, exist_ok=True)
-    ledger_df.to_csv(os.path.join(folder, "ledger.csv"), index=False)
-    balance_df.to_csv(os.path.join(folder, "balance.csv"), index=False)
-    cat_df.to_csv(os.path.join(folder, "categories.csv"), index=False)
+    try:
+        ledger_df.to_csv(os.path.join(folder, "ledger.csv"), index=False)
+        balance_df.to_csv(os.path.join(folder, "balance.csv"), index=False)
+        cat_df.to_csv(os.path.join(folder, "categories.csv"), index=False)
+    except Exception as e:
+        logger.exception("Erreur lors de l'export CSV dans %s", folder)
+        raise ComptaExportError(f"Erreur lors de l'export CSV dans {folder}: {e}") from None
 
