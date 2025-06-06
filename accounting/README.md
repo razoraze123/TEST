@@ -22,3 +22,5 @@ Les données sont pour l'instant conservées en mémoire via des listes
 mais la couche `BaseStorage` prévoit l'intégration future d'autres
 backends de persistance.
 
+
+Pour plus de détails sur l'import des relevés et l'utilisation des filtres du journal, consultez le fichier [HELP.md](HELP.md).
