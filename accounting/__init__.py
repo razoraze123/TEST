@@ -16,7 +16,15 @@ from .categorization import (
     CATEGORIES_KEYWORDS,
 )
 from .reconciliation import suggere_rapprochements, rapprocher
-from .reporting import export_transactions, export_entries
+from .reporting import (
+    export_transactions,
+    export_entries,
+    grand_livre,
+    balance,
+    rapport_categorie,
+    export_report_pdf,
+    export_report_csv,
+)
 
 __all__ = [
     "Transaction",
@@ -32,5 +40,10 @@ __all__ = [
     "rapprocher",
     "export_transactions",
     "export_entries",
+    "grand_livre",
+    "balance",
+    "rapport_categorie",
+    "export_report_pdf",
+    "export_report_csv",
 ]
 
