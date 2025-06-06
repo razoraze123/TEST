@@ -16,9 +16,11 @@ from PySide6.QtWidgets import (
     QDateEdit,
     QDoubleSpinBox,
     QComboBox,
+    QDialog,
     QMessageBox,
 )
 from ui.components import Sidebar, RoundButton, Card
+from ui.transaction_dialog import TransactionDialog
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from pathlib import Path
@@ -237,6 +239,15 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.btn_report = RoundButton("Rapport rapide")
         self.btn_report.clicked.connect(self._show_report)
         btn_layout.addWidget(self.btn_report)
+        self.btn_add_tx = RoundButton("Ajouter")
+        self.btn_add_tx.clicked.connect(self._add_transaction)
+        btn_layout.addWidget(self.btn_add_tx)
+        self.btn_edit_tx = RoundButton("Modifier")
+        self.btn_edit_tx.clicked.connect(self._edit_transaction)
+        btn_layout.addWidget(self.btn_edit_tx)
+        self.btn_delete_tx = RoundButton("Supprimer")
+        self.btn_delete_tx.clicked.connect(self._delete_transaction)
+        btn_layout.addWidget(self.btn_delete_tx)
         btn_layout.addStretch(1)
         layout.addLayout(btn_layout)
 
@@ -318,6 +329,46 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             path,
             len(self.journal_transactions),
         )
+        self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
+    def _add_transaction(self):
+        dlg = TransactionDialog(self)
+        if dlg.exec() == QDialog.Accepted:
+            tx = dlg.get_transaction()
+            self.journal_transactions.append(tx)
+            show_success("Op\u00e9ration ajout\u00e9e", self)
+            self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
+    def _edit_transaction(self):
+        indexes = self.table_journal.selectionModel().selectedRows()
+        if not indexes:
+            return
+        row = indexes[0].row()
+        if row >= len(self.filtered_transactions):
+            return
+        tx = self.filtered_transactions[row]
+        dlg = TransactionDialog(self, tx)
+        if dlg.exec() == QDialog.Accepted:
+            new_tx = dlg.get_transaction()
+            idx_all = self.journal_transactions.index(tx)
+            self.journal_transactions[idx_all] = new_tx
+            show_success("Op\u00e9ration modifi\u00e9e", self)
+            self._apply_journal_filters()
+
+    # ------------------------------------------------------------------
+    def _delete_transaction(self):
+        indexes = self.table_journal.selectionModel().selectedRows()
+        if not indexes:
+            return
+        rows = sorted([i.row() for i in indexes], reverse=True)
+        for row in rows:
+            if row < len(self.filtered_transactions):
+                tx = self.filtered_transactions[row]
+                if tx in self.journal_transactions:
+                    self.journal_transactions.remove(tx)
+        show_success("Op\u00e9ration supprim\u00e9e", self)
         self._apply_journal_filters()
 
     # ------------------------------------------------------------------
