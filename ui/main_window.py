@@ -23,7 +23,14 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QSystemTrayIcon,
 )
-from ui.components import Sidebar, RoundButton, Card, show_success, show_error
+from ui.components import (
+    RoundButton,
+    Card,
+    CollapsibleSection,
+    global_signals,
+    show_success,
+    show_error,
+)
 from ui.transaction_dialog import TransactionDialog
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -116,12 +123,19 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         main_layout.addLayout(self.body_layout, 1)
 
         # Sidebar menu
-        self.sidebar = Sidebar(collapsible=True)
-        self.sidebar._expanded_width = 180
-        self.sidebar.setFixedWidth(180)
-        self.sidebar.setSpacing(4)
+        self.sidebar = QFrame()
+        self._sidebar_expanded = 180
+        self._sidebar_collapsed = 40
+        self.sidebar.setFixedWidth(self._sidebar_expanded)
+        self.sidebar.setStyleSheet(f"background-color: {style.SIDEBAR_DARK};")
+        side_layout = QVBoxLayout(self.sidebar)
+        side_layout.setContentsMargins(0, 0, 0, 0)
+        side_layout.setSpacing(4)
 
-        self.sidebar.add_section("🛒  E-commerce")
+        self._sidebar_anim = QPropertyAnimation(self.sidebar, b"maximumWidth")
+        self._sidebar_anim.setDuration(200)
+
+        self.section_ecom = CollapsibleSection("🛒  E-commerce")
         ecommerce_items = [
             ("Accueil", QStyle.SP_DesktopIcon),
             ("Scraper", QStyle.SP_FileIcon),
@@ -135,11 +149,9 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Tâches planifiées", QStyle.SP_FileDialogListView),
         ]
         for text, icon in ecommerce_items:
-            it = QListWidgetItem(self.style().standardIcon(icon), text)
-            self.sidebar.addItem(it)
+            self.section_ecom.add_item(text, self.style().standardIcon(icon))
 
-        self.sidebar.addItem(QListWidgetItem(""))
-        self.sidebar.add_section("📒  Comptabilité")
+        self.section_compta = CollapsibleSection("📒  Comptabilité")
         accounting_items = [
             ("Journal", QStyle.SP_FileDialogInfoView),
             ("Comptabilité", QStyle.SP_FileDialogContentsView),
@@ -147,9 +159,14 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
             ("Aide compta", QStyle.SP_DialogHelpButton),
         ]
         for text, icon in accounting_items:
-            it = QListWidgetItem(self.style().standardIcon(icon), text)
-            self.sidebar.addItem(it)
-        self.sidebar.setCurrentRow(0)
+            self.section_compta.add_item(text, self.style().standardIcon(icon))
+
+        for sec in [self.section_ecom, self.section_compta]:
+            sec.item_clicked.connect(self._on_sidebar_row_changed)
+            side_layout.addWidget(sec)
+        side_layout.addStretch(1)
+        self.section_ecom._expand()
+        self._on_sidebar_row_changed("Accueil")
         self.body_layout.addWidget(self.sidebar)
 
         # Stacked pages
@@ -190,7 +207,6 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         ]:
             self.stack.addWidget(p)
 
-        self.sidebar.currentRowChanged.connect(self._on_sidebar_row_changed)
 
         # Footer -------------------------------------------------------
         name, version = _get_project_info()
@@ -715,16 +731,24 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
         self.edit_search.setStyleSheet(f"font-size: {font}px;")
 
         if collapse:
-            self.sidebar.collapse()
+            self._collapse_sidebar()
         else:
-            self.sidebar.expand()
+            self._expand_sidebar()
+
+    def _collapse_sidebar(self) -> None:
+        self._sidebar_anim.stop()
+        self._sidebar_anim.setStartValue(self.sidebar.width())
+        self._sidebar_anim.setEndValue(self._sidebar_collapsed)
+        self._sidebar_anim.start()
+
+    def _expand_sidebar(self) -> None:
+        self._sidebar_anim.stop()
+        self._sidebar_anim.setStartValue(self.sidebar.width())
+        self._sidebar_anim.setEndValue(self._sidebar_expanded)
+        self._sidebar_anim.start()
 
     # ------------------------------------------------------------------
-    def _on_sidebar_row_changed(self, row):
-        item = self.sidebar.item(row)
-        if not item:
-            return
-        text = item.text()
+    def _on_sidebar_row_changed(self, text: str):
         page_map = {
             "Accueil": self.page_dashboard,
             "Scraper": self.page_scraper,
@@ -793,3 +817,16 @@ class DashboardWindow(ResponsiveMixin, MainWindow):
                 task = self._tasks[idx.row()]
                 scheduler.remove_task(task.id)
         self._refresh_tasks()
+
+    # ------------------------------------------------------------------
+    def mousePressEvent(self, event):
+        widget = self.childAt(event.pos())
+        inside_section = False
+        while widget:
+            if isinstance(widget, CollapsibleSection):
+                inside_section = True
+                break
+            widget = widget.parentWidget()
+        if not inside_section:
+            global_signals.collapse_sections.emit()
+        super().mousePressEvent(event)

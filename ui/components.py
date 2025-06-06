@@ -7,10 +7,19 @@ from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QVBoxLayout,
+    QHBoxLayout,
     QGraphicsOpacityEffect,
 )
 from PySide6.QtGui import QColor
-from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, QEasingCurve, QPoint
+from PySide6.QtCore import (
+    Qt,
+    QPropertyAnimation,
+    QTimer,
+    QEasingCurve,
+    QPoint,
+    QObject,
+    Signal,
+)
 from PySide6.QtWidgets import QApplication
 
 from . import style
@@ -36,6 +45,89 @@ class RoundButton(QPushButton):
             f"border:none; border-radius: {self._radius}px; padding: 6px 12px;}}"
             f"QPushButton:hover {{background-color: {hover};}}"
         )
+
+
+class _GlobalSignals(QObject):
+    """Container for application-wide signals."""
+
+    collapse_sections = Signal()
+
+
+global_signals = _GlobalSignals()
+
+
+class CollapsibleSection(QWidget):
+    """Vertical collapsible section with a clickable header."""
+
+    item_clicked = Signal(str)
+
+    def __init__(self, title: str, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self._title = title
+        self._expanded = False
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        self.btn_header = QPushButton(f"\u25B6 {title}")
+        self.btn_header.setCheckable(True)
+        self.btn_header.setFlat(True)
+        self.btn_header.setCursor(Qt.PointingHandCursor)
+        self.btn_header.setStyleSheet("text-align:left; padding:6px;")
+        layout.addWidget(self.btn_header)
+
+        self.container = QWidget()
+        self.container.setMaximumHeight(0)
+        self.container_layout = QVBoxLayout(self.container)
+        self.container_layout.setContentsMargins(20, 0, 0, 0)
+        self.container_layout.setSpacing(2)
+        layout.addWidget(self.container)
+
+        self.anim = QPropertyAnimation(self.container, b"maximumHeight", self)
+        self.anim.setDuration(150)
+
+        self.btn_header.clicked.connect(self._on_header_clicked)
+        global_signals.collapse_sections.connect(self._collapse)
+
+    # ------------------------------------------------------------------
+    def add_item(self, text: str, icon=None) -> QPushButton:
+        """Add a clickable item button and return it."""
+        btn = QPushButton(text)
+        btn.setIcon(icon) if icon else None
+        btn.setFlat(True)
+        btn.setCursor(Qt.PointingHandCursor)
+        btn.setStyleSheet("text-align:left; padding:4px 6px;")
+        btn.clicked.connect(lambda: self.item_clicked.emit(text))
+        self.container_layout.addWidget(btn)
+        return btn
+
+    # ------------------------------------------------------------------
+    def _on_header_clicked(self) -> None:
+        global_signals.collapse_sections.emit()
+        if self._expanded:
+            self._collapse()
+        else:
+            self._expand()
+
+    def _expand(self) -> None:
+        self._expanded = True
+        self.btn_header.setText(f"\u25BC {self._title}")
+        end = self.container_layout.sizeHint().height()
+        self.anim.stop()
+        self.anim.setStartValue(0)
+        self.anim.setEndValue(end)
+        self.anim.start()
+
+    def _collapse(self) -> None:
+        if not self._expanded:
+            return
+        self._expanded = False
+        self.btn_header.setText(f"\u25B6 {self._title}")
+        self.anim.stop()
+        self.anim.setStartValue(self.container.height())
+        self.anim.setEndValue(0)
+        self.anim.start()
 
 
 class Sidebar(QListWidget):
