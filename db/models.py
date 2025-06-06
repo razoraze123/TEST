@@ -80,3 +80,9 @@ class Selector(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     domain = Column(String, unique=True)
     selector = Column(String)
+
+class Workflow(Base):
+    __tablename__ = 'workflows'
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    params = Column(Text)
+    output_dir = Column(String)

@@ -5,6 +5,7 @@ import config
 import config_manager
 from scraper_core import ScraperCore
 from optimizer import ImageOptimizer
+from image_pipeline import run_pipeline, replay_workflow
 
 
 def run_scrape(args):
@@ -73,6 +74,13 @@ def run_plugin(args):
     print(f"Active plugin: {config.SCRAPER_PLUGIN}")
 
 
+def run_workflow(args):
+    if args.replay is not None:
+        replay_workflow(args.replay)
+    else:
+        run_pipeline(args.config)
+
+
 def _available_plugins():
     path = os.path.join(os.path.dirname(__file__), "plugins")
     mods = []
@@ -113,6 +121,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_plugin.add_argument("--list", action="store_true", help="List available plugins")
     p_plugin.add_argument("--use", metavar="MODULE", help="Activate plugin module")
     p_plugin.set_defaults(func=run_plugin)
+
+    p_work = sub.add_parser("workflow", help="Run an image workflow")
+    p_work.add_argument("config", help="Path to workflow config file")
+    p_work.add_argument("--replay", type=int, help="Replay workflow by id")
+    p_work.set_defaults(func=run_workflow)
 
     return parser
 

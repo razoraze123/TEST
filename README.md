@@ -101,6 +101,8 @@ updates it automatically. Each key is described below:
 * `WP_DOMAIN` – base URL of the WordPress site used when uploading files.
 * `WP_UPLOAD_PATH` – target upload directory relative to `WP_DOMAIN`.
 * `IMAGE_NAME_PATTERN` – formatting pattern for generated image names.
+  The pattern supports `{id}`, `{variant}` and `{name}` placeholders which are
+  replaced with the product identifier, variant label and original file name.
 
 A minimal template file `custom_suffixes.example.py` is included in the
 repository. Copy it to `custom_suffixes.py` and edit it to provide your own
