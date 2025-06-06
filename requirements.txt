@@ -9,6 +9,7 @@ fpdf2
 PySide6
 webdriver-manager
 playwright
+SQLAlchemy
 
 # Development
 pytest

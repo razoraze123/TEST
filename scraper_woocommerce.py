@@ -38,6 +38,8 @@ except Exception:  # pragma: no cover - optional dependency may be missing
 import config
 import logger_setup  # noqa: F401  # configure logging
 import storage
+import db
+from pathlib import Path
 
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -69,7 +71,8 @@ class ScraperCore:
         self.checkpoint_file = os.path.join(self.base_dir, "scraping_checkpoint.json")
 
         self.db_path = storage.db_path(self.base_dir)
-        storage.init_db(self.base_dir)
+        db.init_engine(Path(self.db_path))
+        storage.init_db()
 
         self._progress = 0
         self._logs = []

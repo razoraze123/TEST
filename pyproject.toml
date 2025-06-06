@@ -15,6 +15,7 @@ dependencies = [
     "PySide6",
     "webdriver-manager",
     "playwright",
+    "SQLAlchemy",
 ]
 
 [project.optional-dependencies]
