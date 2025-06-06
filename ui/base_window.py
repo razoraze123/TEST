@@ -1,5 +1,6 @@
 import sys
 import os
+import subprocess
 import json
 import hashlib
 from collections import deque
@@ -218,6 +219,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("WooCommerce Scraper")
         self.resize(900, 600)
         self.scraper = ScraperCore()
+        self.api_process = None
         self._threads = []
         self.extra_links = {}
         self._setup_ui()
@@ -660,9 +662,9 @@ class MainWindow(QMainWindow):
         layout.setContentsMargins(20, 20, 20, 20)
         layout.setSpacing(15)
 
-        self.btn_stop_api = RoundButton("Arrêter", color="secondary")
-        self.btn_stop_api.clicked.connect(self._stop_worker)
-        layout.addWidget(self.btn_stop_api)
+        self.btn_api_toggle = RoundButton("Démarrer l'API")
+        self.btn_api_toggle.clicked.connect(self._toggle_api_server)
+        layout.addWidget(self.btn_api_toggle)
 
         batch_layout = QHBoxLayout()
         batch_layout.addWidget(QLabel("Batch"))
@@ -902,6 +904,27 @@ class MainWindow(QMainWindow):
         if path:
             self.input_cwebp_path.setText(path)
             self._save_config()
+
+    def _toggle_api_server(self):
+        if self.api_process and self.api_process.poll() is None:
+            self.stop_api_server()
+        else:
+            self.start_api_server()
+
+    def start_api_server(self):
+        if self.api_process and self.api_process.poll() is None:
+            return
+        self.api_process = subprocess.Popen(["python", "flask_server.py"])
+        if hasattr(self, "btn_api_toggle"):
+            self.btn_api_toggle.setText("Arr\u00eater l'API")
+
+    def stop_api_server(self):
+        if self.api_process and self.api_process.poll() is None:
+            self.api_process.terminate()
+            self.api_process.wait()
+        self.api_process = None
+        if hasattr(self, "btn_api_toggle"):
+            self.btn_api_toggle.setText("D\u00e9marrer l'API")
 
     def _create_folder(self):
         name, ok = QInputDialog.getText(self, "Créer dossier", "Nom du dossier")
@@ -1277,5 +1300,6 @@ class MainWindow(QMainWindow):
             worker.stop()
             worker.quit()
             worker.wait()
+        self.stop_api_server()
         print("Tous les threads correctement arrêtés, fermeture propre.")
         super().closeEvent(event)

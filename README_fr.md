@@ -52,17 +52,17 @@ python Application.py
 Elle permet d'effectuer le scraping, l'optimisation des images et de consulter les rapports.
 
 ### D\u00e9marrage du serveur Flask
-`Application.py` (ou `app.py` selon la version) lance automatiquement
-`flask_server.py` en arri\u00e8re-plan sur le port `5000`. Le serveur se termine
-quand l'interface se ferme.
+L'API n'est plus d\u00e9marr\u00e9e automatiquement. Lancez-la via le bouton **D\u00e9marrer l'API**
+dans l'onglet d\u00e9di\u00e9 ou ajoutez `ENABLE_FLASK_API = "true"` dans `config.toml`
+pour qu'elle s'active au d\u00e9marrage.
 
-Pour d\u00e9marrer le serveur manuellement :
+Vous pouvez toujours d\u00e9marrer le serveur manuellement :
 
 ```bash
 python flask_server.py
 ```
 
-Arr\u00eatez-le avec `Ctrl+C` ou en fermant le processus.
+Arr\u00eatez-le avec le bouton **Arr\u00eater l'API** ou `Ctrl+C`.
 
 ### Surveillance des logs
 Tous les messages sont enregistr\u00e9s dans `logs/app.log`. Utilisez :

@@ -219,7 +219,7 @@ A1 | Rouge    | https://...    | a1-rouge-face.webp | https://monsite.com/wp-con
 ```
 
 ### Flask Server API
-`flask_server.py` exposes a small HTTP API for uploading and listing product files. The server is started automatically when launching the GUI with `Application.py` and listens on port `5000` by default.
+`flask_server.py` exposes a small HTTP API for uploading and listing product files. The API is disabled by default. Start it from the *API Flask* tab with the **Start API** button or set `ENABLE_FLASK_API = "true"` in `config.toml` to launch it automatically. It listens on port `5000`.
 
 ## Logging
 All console output is also written to `logs/app.log` at the repository root. The

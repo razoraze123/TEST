@@ -20,11 +20,12 @@ WP_DOMAIN = _cfg["WP_DOMAIN"]
 WP_UPLOAD_PATH = _cfg["WP_UPLOAD_PATH"]
 IMAGE_NAME_PATTERN = _cfg["IMAGE_NAME_PATTERN"]
 SCRAPER_PLUGIN = _cfg.get("SCRAPER_PLUGIN", "plugins.woocommerce")
+ENABLE_FLASK_API = _cfg.get("ENABLE_FLASK_API", "false")
 
 
 def reload() -> Dict[str, str | None]:
     """Reload configuration from disk and update module globals."""
-    global BASE_DIR, CHROME_DRIVER_PATH, CHROME_BINARY_PATH, OPTIPNG_PATH, CWEBP_PATH, SUFFIX_FILE_PATH, LINKS_FILE_PATH, ROOT_FOLDER, THEME, WP_DOMAIN, WP_UPLOAD_PATH, IMAGE_NAME_PATTERN, SCRAPER_PLUGIN
+    global BASE_DIR, CHROME_DRIVER_PATH, CHROME_BINARY_PATH, OPTIPNG_PATH, CWEBP_PATH, SUFFIX_FILE_PATH, LINKS_FILE_PATH, ROOT_FOLDER, THEME, WP_DOMAIN, WP_UPLOAD_PATH, IMAGE_NAME_PATTERN, SCRAPER_PLUGIN, ENABLE_FLASK_API
     _new = config_manager.load()
     BASE_DIR = _new["BASE_DIR"]
     CHROME_DRIVER_PATH = _new["CHROME_DRIVER_PATH"]
@@ -39,4 +40,5 @@ def reload() -> Dict[str, str | None]:
     WP_UPLOAD_PATH = _new["WP_UPLOAD_PATH"]
     IMAGE_NAME_PATTERN = _new["IMAGE_NAME_PATTERN"]
     SCRAPER_PLUGIN = _new.get("SCRAPER_PLUGIN", "plugins.woocommerce")
+    ENABLE_FLASK_API = _new.get("ENABLE_FLASK_API", "false")
     return _new
