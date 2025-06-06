@@ -8,7 +8,7 @@ abstraction prépare l'utilisation d'autres backends comme SQLite ou CSV.
 from .transaction import Transaction
 from .account import Account
 from .journal_entry import JournalEntry
-from .storage import BaseStorage, InMemoryStorage
+from .storage import BaseStorage, InMemoryStorage, SQLStorage
 from .bank_import import import_releve
 from .categorization import (
     categoriser_automatiquement,
@@ -38,6 +38,7 @@ __all__ = [
     "JournalEntry",
     "BaseStorage",
     "InMemoryStorage",
+    "SQLStorage",
     "import_releve",
     "categoriser_automatiquement",
     "rapport_par_categorie",
